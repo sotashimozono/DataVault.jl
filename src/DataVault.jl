@@ -91,8 +91,7 @@ Write a `.done` file for `key`. Removes the corresponding `.running` file if pre
 Fields written: `jobid`, `completed`, `git_hash`, and optionally `tag_value`.
 `jobid` defaults to `SLURM_JOB_ID` env var, then current PID.
 """
-function mark_done!(vault::Vault, key::DataKey;
-                    jobid=nothing, tag_value=nothing)
+function mark_done!(vault::Vault, key::DataKey; jobid=nothing, tag_value=nothing)
     done = _done_file(vault, key)
     mkpath(dirname(done))
 
@@ -105,7 +104,7 @@ function mark_done!(vault::Vault, key::DataKey;
     end
 
     completed = Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS")
-    git_hash  = _git_hash(vault.config_path)
+    git_hash = _git_hash(vault.config_path)
 
     lines = ["jobid=$jobid_str", "completed=$completed", "git_hash=$git_hash"]
     tag_value !== nothing && push!(lines, "tag_value=$tag_value")
@@ -126,7 +125,10 @@ Write a `.running` sentinel. Call at the start of computation to enable
 function mark_running!(vault::Vault, key::DataKey)
     path = _running_file(vault, key)
     mkpath(dirname(path))
-    write(path, "pid=$(getpid())\nstarted=$(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"))\n")
+    write(
+        path,
+        "pid=$(getpid())\nstarted=$(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"))\n",
+    )
     nothing
 end
 
@@ -168,7 +170,7 @@ function load_bin(vault::Vault, key::DataKey; prefix::AbstractString="checkpoint
     path = _bin_file(vault, key; prefix=prefix)
     isfile(path) || error(
         "Checkpoint not found: $path\n" *
-        "(Checkpoints may exist only on HPC. Check your outdir or sync first.)"
+        "(Checkpoints may exist only on HPC. Check your outdir or sync first.)",
     )
     JLD2.load(path)
 end
@@ -178,7 +180,9 @@ end
 
 Atomically write a binary checkpoint.
 """
-function save_bin!(vault::Vault, key::DataKey, data::Dict; prefix::AbstractString="checkpoint")
+function save_bin!(
+    vault::Vault, key::DataKey, data::Dict; prefix::AbstractString="checkpoint"
+)
     path = _bin_file(vault, key; prefix=prefix)
     mkpath(dirname(path))
     _atomic_jld2_write(path, data)
@@ -198,8 +202,8 @@ Enumerate `DataKey`s for this study.
 """
 function keys(vault::Vault; status::Symbol=:all)::Vector{DataKey}
     all = ParamIO.expand(vault.spec)
-    status == :all     && return all
-    status == :done    && return filter(k -> is_done(vault, k), all)
+    status == :all && return all
+    status == :done && return filter(k -> is_done(vault, k), all)
     status == :pending && return filter(k -> !is_done(vault, k), all)
     error("Unknown status :$status — use :all, :done, or :pending")
 end
@@ -215,8 +219,8 @@ Returns the path to the written file.
 function build_ledger(vault::Vault)::String
     done_keys = keys(vault; status=:done)::Vector{DataKey}
 
-    project_dir  = joinpath(vault.outdir, "data", vault.spec.study.project_name)
-    ledger_path  = joinpath(project_dir, "ledger.csv")
+    project_dir = joinpath(vault.outdir, "data", vault.spec.study.project_name)
+    ledger_path = joinpath(project_dir, "ledger.csv")
     mkpath(project_dir)
 
     if isempty(done_keys)
@@ -226,8 +230,8 @@ function build_ledger(vault::Vault)::String
 
     # Build rows
     param_cols = sort(collect(Base.keys(first(done_keys).params)))
-    meta_cols  = ["sample", "run_id", "git_hash", "completed_at", "tag_value", "status"]
-    all_cols   = vcat(param_cols, meta_cols)
+    meta_cols = ["sample", "run_id", "git_hash", "completed_at", "tag_value", "status"]
+    all_cols = vcat(param_cols, meta_cols)
 
     rows = Vector{Dict{String,String}}()
     for key in done_keys
@@ -236,12 +240,12 @@ function build_ledger(vault::Vault)::String
         for c in param_cols
             row[c] = string(get(key.params, c, ""))
         end
-        row["sample"]       = string(key.sample)
-        row["run_id"]       = get(done_data, "jobid", "")
-        row["git_hash"]     = get(done_data, "git_hash", "")
+        row["sample"] = string(key.sample)
+        row["run_id"] = get(done_data, "jobid", "")
+        row["git_hash"] = get(done_data, "git_hash", "")
         row["completed_at"] = get(done_data, "completed", "")
-        row["tag_value"]    = get(done_data, "tag_value", "")
-        row["status"]       = "done"
+        row["tag_value"] = get(done_data, "tag_value", "")
+        row["status"] = "done"
         push!(rows, row)
     end
 
@@ -265,21 +269,21 @@ Write `meta.toml` under `out/figure/{study}/`.
 `scripts` is an optional `Dict{String,String}` mapping label → path,
 e.g. `Dict("plot_energy" => "scripts/analysis/plot_energy.jl")`.
 """
-function record_figure(vault::Vault;
-                       study::AbstractString,
-                       scripts::Dict{String,String}=Dict{String,String}())
+function record_figure(
+    vault::Vault; study::AbstractString, scripts::Dict{String,String}=Dict{String,String}()
+)
     figure_dir = joinpath(vault.outdir, "figure", study)
     mkpath(figure_dir)
 
-    config_rel  = relpath(vault.config_path, figure_dir)
-    data_rel    = relpath(joinpath(vault.outdir, "data", study), figure_dir)
-    git_hash    = _git_hash(vault.config_path)
+    config_rel = relpath(vault.config_path, figure_dir)
+    data_rel = relpath(joinpath(vault.outdir, "data", study), figure_dir)
+    git_hash = _git_hash(vault.config_path)
 
     meta = Dict(
         "source" => Dict(
-            "config"       => config_rel,
-            "data_dir"     => data_rel,
-            "git_hash"     => git_hash,
+            "config" => config_rel,
+            "data_dir" => data_rel,
+            "git_hash" => git_hash,
             "generated_at" => string(Dates.today()),
         ),
         "scripts" => scripts,
@@ -334,7 +338,7 @@ function _atomic_jld2_write(path::String, data::Dict)
 end
 
 function _save_config_snapshot(vault::Vault)
-    project_dir   = joinpath(vault.outdir, "data", vault.spec.study.project_name)
+    project_dir = joinpath(vault.outdir, "data", vault.spec.study.project_name)
     snapshot_path = joinpath(project_dir, "config_snapshot.toml")
     mkpath(project_dir)
 
@@ -342,7 +346,7 @@ function _save_config_snapshot(vault::Vault)
         cp(vault.config_path, snapshot_path)
     else
         existing = TOML.parsefile(snapshot_path)
-        current  = TOML.parsefile(vault.config_path)
+        current = TOML.parsefile(vault.config_path)
         if existing != current
             @warn "Config has changed since the snapshot was taken — not overwriting" snapshot=snapshot_path
         end
@@ -355,7 +359,7 @@ function _parse_done_file(path::String)::Dict{String,String}
     for line in eachline(path)
         idx = findfirst('=', line)
         idx === nothing && continue
-        result[line[1:idx-1]] = line[idx+1:end]
+        result[line[1:(idx - 1)]] = line[(idx + 1):end]
     end
     result
 end

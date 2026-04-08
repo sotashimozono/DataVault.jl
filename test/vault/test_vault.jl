@@ -1,7 +1,7 @@
 using Dates
 
 const FIXTURES = joinpath(@__DIR__, "fixtures")
-const CONFIG   = joinpath(FIXTURES, "study.toml")
+const CONFIG = joinpath(FIXTURES, "study.toml")
 
 # Each testset uses its own tmpdir so tests are isolated
 function with_vault(f)
@@ -72,12 +72,12 @@ end
 @testset "keys: status filtering" begin
     with_vault() do vault, _
         k = first_key(vault)
-        @test length(DataVault.keys(vault; status=:done))    == 0
+        @test length(DataVault.keys(vault; status=:done)) == 0
         @test length(DataVault.keys(vault; status=:pending)) == 8
 
         mark_done!(vault, k)
 
-        @test length(DataVault.keys(vault; status=:done))    == 1
+        @test length(DataVault.keys(vault; status=:done)) == 1
         @test length(DataVault.keys(vault; status=:pending)) == 7
     end
 end
@@ -105,16 +105,20 @@ end
         mark_done!(vault, k; tag_value=0.99)
 
         # Find and parse the .done file
-        done_files = filter(f -> endswith(f, ".done"),
-                            vcat([joinpath(root, f)
-                                  for (root, _, files) in walkdir(outdir)
-                                  for f in files]...))
+        done_files = filter(
+            f -> endswith(f, ".done"),
+            vcat(
+                [
+                    joinpath(root, f) for (root, _, files) in walkdir(outdir) for f in files
+                ]...,
+            ),
+        )
         @test length(done_files) == 1
 
         content = read(done_files[1], String)
-        @test occursin("jobid=",     content)
+        @test occursin("jobid=", content)
         @test occursin("completed=", content)
-        @test occursin("git_hash=",  content)
+        @test occursin("git_hash=", content)
         @test occursin("tag_value=0.99", content)
     end
 end
@@ -124,10 +128,14 @@ end
         k = first_key(vault)
         mark_running!(vault, k)
 
-        running_files = filter(f -> endswith(f, ".running"),
-                               vcat([joinpath(root, f)
-                                     for (root, _, files) in walkdir(outdir)
-                                     for f in files]...))
+        running_files = filter(
+            f -> endswith(f, ".running"),
+            vcat(
+                [
+                    joinpath(root, f) for (root, _, files) in walkdir(outdir) for f in files
+                ]...,
+            ),
+        )
         @test length(running_files) == 1
 
         mark_done!(vault, k)
@@ -139,13 +147,13 @@ end
 
 @testset "save! / load: round-trip" begin
     with_vault() do vault, _
-        k    = first_key(vault)
+        k = first_key(vault)
         data = Dict("energy" => -1.23, "magnetization" => [0.1, 0.2, 0.3])
 
         DataVault.save!(vault, k, data)
         loaded = DataVault.load(vault, k)
 
-        @test loaded["energy"]        ≈ -1.23
+        @test loaded["energy"] ≈ -1.23
         @test loaded["magnetization"] ≈ [0.1, 0.2, 0.3]
     end
 end
@@ -167,7 +175,7 @@ end
 
 @testset "save_bin! / load_bin: round-trip" begin
     with_vault() do vault, _
-        k    = first_key(vault)
+        k = first_key(vault)
         data = Dict("mps" => rand(4, 4))
 
         DataVault.save_bin!(vault, k, data)
@@ -179,7 +187,11 @@ end
 @testset "load_bin: error with helpful message when missing" begin
     with_vault() do vault, _
         k = first_key(vault)
-        ex = try DataVault.load_bin(vault, k); nothing catch e e end
+        ex = try
+            DataVault.load_bin(vault, k); nothing
+        catch e
+            e
+        end
         @test ex isa ErrorException
         @test occursin("HPC", ex.msg)
     end
@@ -216,9 +228,11 @@ end
 
 @testset "record_figure: meta.toml created" begin
     with_vault() do vault, outdir
-        path = record_figure(vault;
-            study   = "test_study",
-            scripts = Dict("plot_energy" => "scripts/plot_energy.jl"))
+        path = record_figure(
+            vault;
+            study="test_study",
+            scripts=Dict("plot_energy" => "scripts/plot_energy.jl"),
+        )
 
         @test isfile(path)
         meta = TOML.parsefile(path)
@@ -235,15 +249,22 @@ end
 @testset "cleanup_stale: removes .running files" begin
     with_vault() do vault, outdir
         ks = DataVault.keys(vault)[1:3]
-        for k in ks; mark_running!(vault, k); end
+        for k in ks
+            ;
+            mark_running!(vault, k);
+        end
 
         n = cleanup_stale(vault)
         @test n == 3
 
-        running = filter(f -> endswith(f, ".running"),
-                         vcat([joinpath(root, f)
-                               for (root, _, files) in walkdir(outdir)
-                               for f in files]...))
+        running = filter(
+            f -> endswith(f, ".running"),
+            vcat(
+                [
+                    joinpath(root, f) for (root, _, files) in walkdir(outdir) for f in files
+                ]...,
+            ),
+        )
         @test isempty(running)
     end
 end
