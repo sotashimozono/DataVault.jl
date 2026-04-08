@@ -1,7 +1,7 @@
 ENV["GKSwstype"] = "100"
 
-using DataVault, Test
-const dirs = []
+using DataVault, ParamIO, Test, TOML
+const dirs = ["vault"]
 
 const FIG_BASE = joinpath(pkgdir(DataVault), "docs", "src", "assets")
 const PATHS = Dict()

@@ -1,0 +1,15 @@
+[study]
+project_name  = "test_study"
+total_samples = 2
+outdir        = "out"   # will be overridden in tests
+
+[datavault]
+path_keys = ["system.N", "model.g"]
+
+[[paramsets]]
+
+[paramsets.system]
+N = [24, 48]
+
+[paramsets.model]
+g = [0.5, 1.0]

@@ -1,5 +1,376 @@
 module DataVault
 
-greet() = print("Hello World!")
+using JLD2, TOML, Dates, Printf
+using ParamIO
+
+import Base: keys
+
+export Vault
+export DataKey                          # re-export from ParamIO
+export is_done, mark_done!, mark_running!
+export build_ledger, record_figure, cleanup_stale
+
+# ── Struct ────────────────────────────────────────────────────────────────────
+
+"""
+    Vault
+
+Handle for a single computation study.
+Wraps a `ConfigSpec` and resolves file paths under `outdir`.
+
+Priority for `outdir`: constructor argument > `ENV["DATAVAULT_OUTDIR"]` > config value.
+"""
+struct Vault
+    config_path::String
+    spec::ParamIO.ConfigSpec
+    outdir::String
+end
+
+function Vault(config_path::AbstractString; outdir::Union{AbstractString,Nothing}=nothing)
+    spec = ParamIO.load(config_path)
+
+    resolved = if outdir !== nothing
+        string(outdir)
+    elseif haskey(ENV, "DATAVAULT_OUTDIR")
+        ENV["DATAVAULT_OUTDIR"]
+    else
+        spec.study.outdir
+    end
+
+    vault = Vault(abspath(config_path), spec, abspath(resolved))
+    _save_config_snapshot(vault)
+    vault
+end
+
+# ── Path helpers ──────────────────────────────────────────────────────────────
+
+function _param_path(vault::Vault, key::DataKey)::String
+    ParamIO.format_path(key, vault.spec.path_keys)
+end
+
+function _data_dir(vault::Vault, key::DataKey)::String
+    joinpath(vault.outdir, "data", vault.spec.study.project_name, _param_path(vault, key))
+end
+
+function _data_file(vault::Vault, key::DataKey; prefix::AbstractString="data")::String
+    joinpath(_data_dir(vault, key), @sprintf("%s_sample%03d.jld2", prefix, key.sample))
+end
+
+function _bin_dir(vault::Vault, key::DataKey)::String
+    joinpath(vault.outdir, "bin", _param_path(vault, key))
+end
+
+function _bin_file(vault::Vault, key::DataKey; prefix::AbstractString="checkpoint")::String
+    joinpath(_bin_dir(vault, key), @sprintf("%s_sample%03d.jld2", prefix, key.sample))
+end
+
+function _status_dir(vault::Vault, key::DataKey)::String
+    joinpath(vault.outdir, "status", _param_path(vault, key))
+end
+
+function _done_file(vault::Vault, key::DataKey)::String
+    joinpath(_status_dir(vault, key), @sprintf("sample_%03d.done", key.sample))
+end
+
+function _running_file(vault::Vault, key::DataKey)::String
+    joinpath(_status_dir(vault, key), @sprintf("sample_%03d.running", key.sample))
+end
+
+# ── Status ────────────────────────────────────────────────────────────────────
+
+"""
+    is_done(vault, key) -> Bool
+"""
+is_done(vault::Vault, key::DataKey)::Bool = isfile(_done_file(vault, key))
+
+"""
+    mark_done!(vault, key; jobid=nothing, tag_value=nothing)
+
+Write a `.done` file for `key`. Removes the corresponding `.running` file if present.
+
+Fields written: `jobid`, `completed`, `git_hash`, and optionally `tag_value`.
+`jobid` defaults to `SLURM_JOB_ID` env var, then current PID.
+"""
+function mark_done!(vault::Vault, key::DataKey; jobid=nothing, tag_value=nothing)
+    done = _done_file(vault, key)
+    mkpath(dirname(done))
+
+    jobid_str = if jobid !== nothing
+        string(jobid)
+    elseif haskey(ENV, "SLURM_JOB_ID")
+        ENV["SLURM_JOB_ID"]
+    else
+        string(getpid())
+    end
+
+    completed = Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS")
+    git_hash = _git_hash(vault.config_path)
+
+    lines = ["jobid=$jobid_str", "completed=$completed", "git_hash=$git_hash"]
+    tag_value !== nothing && push!(lines, "tag_value=$tag_value")
+
+    write(done, join(lines, "\n") * "\n")
+
+    running = _running_file(vault, key)
+    isfile(running) && rm(running; force=true)
+    nothing
+end
+
+"""
+    mark_running!(vault, key)
+
+Write a `.running` sentinel. Call at the start of computation to enable
+`cleanup_stale()` to detect crashed jobs.
+"""
+function mark_running!(vault::Vault, key::DataKey)
+    path = _running_file(vault, key)
+    mkpath(dirname(path))
+    write(
+        path,
+        "pid=$(getpid())\nstarted=$(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"))\n",
+    )
+    nothing
+end
+
+# ── Data I/O ──────────────────────────────────────────────────────────────────
+
+"""
+    DataVault.load(vault, key; prefix="data") -> Dict
+
+Load the JLD2 data file for `key`. Returns the stored dict.
+Raises an error if the file does not exist.
+"""
+function load(vault::Vault, key::DataKey; prefix::AbstractString="data")::Dict
+    path = _data_file(vault, key; prefix=prefix)
+    isfile(path) || error("Data file not found: $path")
+    JLD2.load(path)
+end
+
+"""
+    DataVault.save!(vault, key, data; prefix="data")
+
+Atomically write `data` (a Dict) to the JLD2 data file for `key`.
+Uses a tmp file + rename pattern safe on NFS.
+Does NOT automatically mark done — call `mark_done!` explicitly.
+"""
+function save!(vault::Vault, key::DataKey, data::Dict; prefix::AbstractString="data")
+    path = _data_file(vault, key; prefix=prefix)
+    mkpath(dirname(path))
+    _atomic_jld2_write(path, data)
+    nothing
+end
+
+"""
+    DataVault.load_bin(vault, key; prefix="checkpoint") -> Dict
+
+Load a binary checkpoint file. Raises an explicit error if not present
+(checkpoints may exist only on HPC).
+"""
+function load_bin(vault::Vault, key::DataKey; prefix::AbstractString="checkpoint")::Dict
+    path = _bin_file(vault, key; prefix=prefix)
+    isfile(path) || error(
+        "Checkpoint not found: $path\n" *
+        "(Checkpoints may exist only on HPC. Check your outdir or sync first.)",
+    )
+    JLD2.load(path)
+end
+
+"""
+    DataVault.save_bin!(vault, key, data; prefix="checkpoint")
+
+Atomically write a binary checkpoint.
+"""
+function save_bin!(
+    vault::Vault, key::DataKey, data::Dict; prefix::AbstractString="checkpoint"
+)
+    path = _bin_file(vault, key; prefix=prefix)
+    mkpath(dirname(path))
+    _atomic_jld2_write(path, data)
+    nothing
+end
+
+# ── Key enumeration ───────────────────────────────────────────────────────────
+
+"""
+    keys(vault; status=:all) -> Vector{DataKey}
+
+Enumerate `DataKey`s for this study.
+
+- `status=:all`     — all keys (default)
+- `status=:done`    — only keys with a `.done` file
+- `status=:pending` — only keys without a `.done` file
+"""
+function keys(vault::Vault; status::Symbol=:all)::Vector{DataKey}
+    all = ParamIO.expand(vault.spec)
+    status == :all && return all
+    status == :done && return filter(k -> is_done(vault, k), all)
+    status == :pending && return filter(k -> !is_done(vault, k), all)
+    error("Unknown status :$status — use :all, :done, or :pending")
+end
+
+# ── Ledger ────────────────────────────────────────────────────────────────────
+
+"""
+    build_ledger(vault) -> String
+
+Scan all `.done` files and write `ledger.csv` under the project data directory.
+Returns the path to the written file.
+"""
+function build_ledger(vault::Vault)::String
+    done_keys = keys(vault; status=:done)::Vector{DataKey}
+
+    project_dir = joinpath(vault.outdir, "data", vault.spec.study.project_name)
+    ledger_path = joinpath(project_dir, "ledger.csv")
+    mkpath(project_dir)
+
+    if isempty(done_keys)
+        write(ledger_path, "")
+        return ledger_path
+    end
+
+    # Build rows
+    param_cols = sort(collect(Base.keys(first(done_keys).params)))
+    meta_cols = ["sample", "run_id", "git_hash", "completed_at", "tag_value", "status"]
+    all_cols = vcat(param_cols, meta_cols)
+
+    rows = Vector{Dict{String,String}}()
+    for key in done_keys
+        done_data = _parse_done_file(_done_file(vault, key))
+        row = Dict{String,String}()
+        for c in param_cols
+            row[c] = string(get(key.params, c, ""))
+        end
+        row["sample"] = string(key.sample)
+        row["run_id"] = get(done_data, "jobid", "")
+        row["git_hash"] = get(done_data, "git_hash", "")
+        row["completed_at"] = get(done_data, "completed", "")
+        row["tag_value"] = get(done_data, "tag_value", "")
+        row["status"] = "done"
+        push!(rows, row)
+    end
+
+    open(ledger_path, "w") do io
+        println(io, join(all_cols, ","))
+        for row in rows
+            println(io, join([get(row, c, "") for c in all_cols], ","))
+        end
+    end
+
+    ledger_path
+end
+
+# ── Figure provenance ─────────────────────────────────────────────────────────
+
+"""
+    record_figure(vault; study, scripts=Dict())
+
+Write `meta.toml` under `out/figure/{study}/`.
+
+`scripts` is an optional `Dict{String,String}` mapping label → path,
+e.g. `Dict("plot_energy" => "scripts/analysis/plot_energy.jl")`.
+"""
+function record_figure(
+    vault::Vault; study::AbstractString, scripts::Dict{String,String}=Dict{String,String}()
+)
+    figure_dir = joinpath(vault.outdir, "figure", study)
+    mkpath(figure_dir)
+
+    config_rel = relpath(vault.config_path, figure_dir)
+    data_rel = relpath(joinpath(vault.outdir, "data", study), figure_dir)
+    git_hash = _git_hash(vault.config_path)
+
+    meta = Dict(
+        "source" => Dict(
+            "config" => config_rel,
+            "data_dir" => data_rel,
+            "git_hash" => git_hash,
+            "generated_at" => string(Dates.today()),
+        ),
+        "scripts" => scripts,
+    )
+
+    meta_path = joinpath(figure_dir, "meta.toml")
+    open(meta_path, "w") do io
+        TOML.print(io, meta)
+    end
+    meta_path
+end
+
+# ── Maintenance ───────────────────────────────────────────────────────────────
+
+"""
+    cleanup_stale(vault) -> Int
+
+Remove all `.running` sentinel files under the status directory.
+Returns the number of files removed.
+"""
+function cleanup_stale(vault::Vault)::Int
+    status_base = joinpath(vault.outdir, "status")
+    isdir(status_base) || return 0
+
+    count = 0
+    for (root, _, files) in walkdir(status_base)
+        for f in files
+            if endswith(f, ".running")
+                rm(joinpath(root, f); force=true)
+                count += 1
+            end
+        end
+    end
+    count
+end
+
+# ── Internals ─────────────────────────────────────────────────────────────────
+
+function _atomic_jld2_write(path::String, data::Dict)
+    tmp = path * ".tmp." * string(getpid())
+    try
+        jldopen(tmp, "w") do f
+            for (k, v) in data
+                f[string(k)] = v
+            end
+        end
+        mv(tmp, path; force=true)
+    catch e
+        isfile(tmp) && rm(tmp; force=true)
+        rethrow(e)
+    end
+end
+
+function _save_config_snapshot(vault::Vault)
+    project_dir = joinpath(vault.outdir, "data", vault.spec.study.project_name)
+    snapshot_path = joinpath(project_dir, "config_snapshot.toml")
+    mkpath(project_dir)
+
+    if !isfile(snapshot_path)
+        cp(vault.config_path, snapshot_path)
+    else
+        existing = TOML.parsefile(snapshot_path)
+        current = TOML.parsefile(vault.config_path)
+        if existing != current
+            @warn "Config has changed since the snapshot was taken — not overwriting" snapshot=snapshot_path
+        end
+    end
+end
+
+function _parse_done_file(path::String)::Dict{String,String}
+    result = Dict{String,String}()
+    isfile(path) || return result
+    for line in eachline(path)
+        idx = findfirst('=', line)
+        idx === nothing && continue
+        result[line[1:(idx - 1)]] = line[(idx + 1):end]
+    end
+    result
+end
+
+function _git_hash(ref_path::String)::String
+    dir = isdir(ref_path) ? ref_path : dirname(ref_path)
+    try
+        strip(read(`git -C $dir rev-parse --short HEAD`, String))
+    catch
+        "unknown"
+    end
+end
 
 end # module DataVault
