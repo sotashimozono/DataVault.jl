@@ -1,7 +1,7 @@
-# MyModule.jl
+# DataVault.jl
 
 ## Models
 
 ```@autodocs
-Modules = [MyModule]
+Modules = [DataVault]
 ```
