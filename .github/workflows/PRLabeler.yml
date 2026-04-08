@@ -1,0 +1,38 @@
+name: Checkbox Labeler
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  labeler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Labels based on Checkboxes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if echo "$PR_BODY" | grep -qi "\- \[x\] ✨ Feature"; then
+            gh pr edit "$PR_NUMBER" --add-label "feature"
+          fi
+
+          if echo "$PR_BODY" | grep -qi "\- \[x\] 🐛 Bug Fix"; then
+            gh pr edit "$PR_NUMBER" --add-label "bug"
+          fi
+
+          if echo "$PR_BODY" | grep -qi "\- \[x\] ⚡ Performance"; then
+            gh pr edit "$PR_NUMBER" --add-label "performance"
+          fi
+
+          if echo "$PR_BODY" | grep -qi "\- \[x\] 📖 Documentation"; then
+            gh pr edit "$PR_NUMBER" --add-label "documentation"
+          fi
+
+          if echo "$PR_BODY" | grep -qi "\- \[x\] 🧰 Maintenance"; then
+            gh pr edit "$PR_NUMBER" --add-label "maintenance"
+          fi
