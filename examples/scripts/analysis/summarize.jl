@@ -37,8 +37,14 @@ for μ in sort(collect(keys(mu_groups)))
     per_mean = sum(periods) / length(periods)
     per_std = sqrt(sum((p - per_mean)^2 for p in periods) / max(1, length(periods) - 1))
 
-    @printf("mu=%-5.2f | %6.4f ± %6.4f      | %6.4f ± %6.4f\n",
-        μ, amp_mean, amp_std, per_mean, per_std)
+    @printf(
+        "mu=%-5.2f | %6.4f ± %6.4f      | %6.4f ± %6.4f\n",
+        μ,
+        amp_mean,
+        amp_std,
+        per_mean,
+        per_std
+    )
 end
 
 println("\nLedger: $(build_ledger(vault))")

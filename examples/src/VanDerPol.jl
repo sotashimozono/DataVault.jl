@@ -26,12 +26,12 @@ Integrate the Van der Pol equation using fixed-step RK4.
 Returns time, x, and y trajectories as vectors.
 """
 function rk4_solve(μ::Float64, u0::Vector{Float64}, t_end::Float64, dt::Float64)
-    n   = round(Int, t_end / dt)
-    ts  = Vector{Float64}(undef, n + 1)
-    xs  = Vector{Float64}(undef, n + 1)
-    ys  = Vector{Float64}(undef, n + 1)
+    n = round(Int, t_end / dt)
+    ts = Vector{Float64}(undef, n + 1)
+    xs = Vector{Float64}(undef, n + 1)
+    ys = Vector{Float64}(undef, n + 1)
 
-    u   = copy(u0)
+    u = copy(u0)
     du1 = zeros(2)
     du2 = zeros(2)
     du3 = zeros(2)
@@ -78,8 +78,9 @@ Returns:
 - `period`:    mean period estimated from zero-crossings of x (rising)
 - `energy`:    mean (x² + y²) / 2 in steady-state window
 """
-function extract_observables(ts::Vector{Float64}, xs::Vector{Float64}, ys::Vector{Float64};
-                             discard_frac::Float64=0.5)::Dict{String,Any}
+function extract_observables(
+    ts::Vector{Float64}, xs::Vector{Float64}, ys::Vector{Float64}; discard_frac::Float64=0.5
+)::Dict{String,Any}
     n_start = round(Int, length(ts) * discard_frac) + 1
 
     ts_ss = ts[n_start:end]
@@ -87,7 +88,7 @@ function extract_observables(ts::Vector{Float64}, xs::Vector{Float64}, ys::Vecto
     ys_ss = ys[n_start:end]
 
     amplitude = maximum(abs, xs_ss)
-    energy    = mean(xs_ss .^ 2 .+ ys_ss .^ 2) / 2.0
+    energy = mean(xs_ss .^ 2 .+ ys_ss .^ 2) / 2.0
 
     # Period from rising zero-crossings of x
     crossings = Int[]
@@ -106,11 +107,11 @@ function extract_observables(ts::Vector{Float64}, xs::Vector{Float64}, ys::Vecto
 
     Dict{String,Any}(
         "amplitude" => amplitude,
-        "period"    => period,
-        "energy"    => energy,
-        "ts"        => ts_ss,
-        "xs"        => xs_ss,
-        "ys"        => ys_ss,
+        "period" => period,
+        "energy" => energy,
+        "ts" => ts_ss,
+        "xs" => xs_ss,
+        "ys" => ys_ss,
     )
 end
 

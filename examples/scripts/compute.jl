@@ -24,16 +24,16 @@ println("Outdir : $(vault.outdir)")
 println("Pending: $(length(pending)) / $(length(DataVault.keys(vault))) keys")
 
 for key in pending
-    μ     = Float64(key.params["system.mu"])
+    μ = Float64(key.params["system.mu"])
     t_end = Float64(key.params["system.t_end"])
-    dt    = Float64(key.params["system.dt"])
-    s     = key.sample
+    dt = Float64(key.params["system.dt"])
+    s = key.sample
 
     # sample ごとにシードを固定して初期条件を決める
     rng = (s * 1234567 + 891011) % 999983   # 簡易シード (Random 依存なし)
-    x0  = 0.5 + (rng % 100) / 200.0        # 0.5 ~ 1.0
-    v0  = ((rng * 31337) % 100) / 200.0 - 0.25  # -0.25 ~ 0.25
-    u0  = [x0, v0]
+    x0 = 0.5 + (rng % 100) / 200.0        # 0.5 ~ 1.0
+    v0 = ((rng * 31337) % 100) / 200.0 - 0.25  # -0.25 ~ 0.25
+    u0 = [x0, v0]
 
     mark_running!(vault, key)
     print("  mu=$(μ), sample=$(s) ... ")
@@ -45,28 +45,33 @@ for key in pending
     stride = 10
     data = Dict{String,Any}(
         "amplitude" => obs["amplitude"],
-        "period"    => obs["period"],
-        "energy"    => obs["energy"],
-        "ts"        => obs["ts"][1:stride:end],
-        "xs"        => obs["xs"][1:stride:end],
-        "ys"        => obs["ys"][1:stride:end],
-        "x0"        => x0,
-        "v0"        => v0,
-        "mu"        => μ,
+        "period" => obs["period"],
+        "energy" => obs["energy"],
+        "ts" => obs["ts"][1:stride:end],
+        "xs" => obs["xs"][1:stride:end],
+        "ys" => obs["ys"][1:stride:end],
+        "x0" => x0,
+        "v0" => v0,
+        "mu" => μ,
     )
 
     DataVault.save!(vault, key, data)
     mark_done!(vault, key; tag_value=obs["amplitude"])
-    println("amplitude=$(round(obs["amplitude"], digits=4)), period=$(round(obs["period"], digits=4))")
+    println(
+        "amplitude=$(round(obs["amplitude"], digits=4)), period=$(round(obs["period"], digits=4))",
+    )
 end
 
 println("\nBuilding ledger...")
 ledger_path = build_ledger(vault)
 println("Ledger: $ledger_path")
 
-record_figure(vault;
-    study   = "vanderpol",
-    scripts = Dict("compute" => "scripts/compute.jl",
-                   "summary" => "scripts/analysis/summarize.jl"))
+record_figure(
+    vault;
+    study="vanderpol",
+    scripts=Dict(
+        "compute" => "scripts/compute.jl", "summary" => "scripts/analysis/summarize.jl"
+    ),
+)
 
 println("Done.")
