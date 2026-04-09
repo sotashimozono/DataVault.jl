@@ -1,0 +1,9 @@
+[source]
+git_hash = "9391021"
+config = "../../../configs/vanderpol.toml"
+data_dir = "../../data/vanderpol"
+generated_at = "2026-04-08"
+
+[scripts]
+summary = "scripts/analysis/summarize.jl"
+compute = "scripts/compute.jl"
