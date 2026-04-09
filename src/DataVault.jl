@@ -44,9 +44,11 @@ struct Vault
     path_formatter::Function
 end
 
-function Vault(config_path::AbstractString;
-               outdir::Union{AbstractString,Nothing}=nothing,
-               path_formatter::Function=ParamIO.format_path)
+function Vault(
+    config_path::AbstractString;
+    outdir::Union{AbstractString,Nothing}=nothing,
+    path_formatter::Function=ParamIO.format_path,
+)
     spec = ParamIO.load(config_path)
 
     resolved = if outdir !== nothing
