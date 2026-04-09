@@ -188,7 +188,8 @@ end
     with_vault() do vault, _
         k = first_key(vault)
         ex = try
-            DataVault.load_bin(vault, k); nothing
+            DataVault.load_bin(vault, k);
+            nothing
         catch e
             e
         end
