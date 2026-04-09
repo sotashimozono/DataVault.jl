@@ -275,3 +275,54 @@ end
         @test cleanup_stale(vault) == 0
     end
 end
+
+# ── Custom path_formatter ─────────────────────────────────────────────────────
+
+@testset "path_formatter: default uses ParamIO.format_path" begin
+    with_vault() do vault, _
+        # デフォルトでは ParamIO.format_path と一致すべき
+        @test vault.path_formatter === ParamIO.format_path
+        key = first_key(vault)
+        expected = ParamIO.format_path(key, vault.spec.path_keys)
+        @test DataVault._param_path(vault, key) == expected
+    end
+end
+
+@testset "path_formatter: custom function overrides default" begin
+    outdir = mktempdir()
+    try
+        # カスタムフォーマッタ: "custom_N{N}_g{g}" のような独自形式
+        my_format = (key, _) -> begin
+            n = key.params["system.N"]
+            g = key.params["model.g"]
+            "custom_N$(n)_g$(g)"
+        end
+
+        vault = Vault(CONFIG; outdir=outdir, path_formatter=my_format)
+        key = DataVault.keys(vault)[1]
+        @test DataVault._param_path(vault, key) == "custom_N24_g0.5"
+    finally
+        rm(outdir; recursive=true, force=true)
+    end
+end
+
+@testset "path_formatter: custom format affects data/bin/status paths" begin
+    outdir = mktempdir()
+    try
+        my_format = (_, _) -> "FIXED_LABEL"
+        vault = Vault(CONFIG; outdir=outdir, path_formatter=my_format)
+        key = DataVault.keys(vault)[1]
+
+        DataVault.save!(vault, key, Dict("x" => 1.0))
+        mark_done!(vault, key)
+
+        # 全パスに "FIXED_LABEL" が含まれていることを確認
+        @test occursin("FIXED_LABEL", DataVault._data_dir(vault, key))
+        @test occursin("FIXED_LABEL", DataVault._bin_dir(vault, key))
+        @test occursin("FIXED_LABEL", DataVault._status_dir(vault, key))
+        @test isfile(DataVault._data_file(vault, key))
+        @test is_done(vault, key)
+    finally
+        rm(outdir; recursive=true, force=true)
+    end
+end
