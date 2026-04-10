@@ -12,17 +12,21 @@
 # ── 「この run が住むディレクトリ」 ─────────────────────────────────────────────
 # log.toml writer / snapshot / ledger / cleanup から再利用する。
 
-_run_data_dir(vault::Vault)::String =
-    joinpath(vault.outdir, "data", vault.spec.study.project_name, vault.run)
+_run_data_dir(vault::Vault)::String = joinpath(
+    vault.outdir, "data", vault.spec.study.project_name, vault.run
+)
 
-_run_status_dir(vault::Vault)::String =
-    joinpath(vault.outdir, "status", vault.spec.study.project_name, vault.run)
+_run_status_dir(vault::Vault)::String = joinpath(
+    vault.outdir, "status", vault.spec.study.project_name, vault.run
+)
 
-_run_bin_dir(vault::Vault)::String =
-    joinpath(vault.outdir, "bin", vault.spec.study.project_name, vault.run)
+_run_bin_dir(vault::Vault)::String = joinpath(
+    vault.outdir, "bin", vault.spec.study.project_name, vault.run
+)
 
-_run_figure_dir(vault::Vault)::String =
-    joinpath(vault.outdir, "figure", vault.spec.study.project_name, vault.run)
+_run_figure_dir(vault::Vault)::String = joinpath(
+    vault.outdir, "figure", vault.spec.study.project_name, vault.run
+)
 
 # ── パラメータパス ────────────────────────────────────────────────────────────
 

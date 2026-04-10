@@ -63,8 +63,7 @@ Throws an explicit error if:
 function read_log_toml(path::AbstractString)
     isfile(path) || error("log.toml not found: $path")
     parsed = TOML.parsefile(path)
-    haskey(parsed, "meta") ||
-        error("Invalid log.toml: missing [meta] envelope at $path")
+    haskey(parsed, "meta") || error("Invalid log.toml: missing [meta] envelope at $path")
     haskey(parsed["meta"], "log_toml_version") ||
         error("Invalid log.toml: missing [meta].log_toml_version at $path")
     v = parsed["meta"]["log_toml_version"]
@@ -83,36 +82,35 @@ end
 
 function _read_log_toml_v1(parsed::Dict, path::AbstractString)::LogTomlV1
     function _need(d::Dict, k::AbstractString, where::AbstractString)
-        haskey(d, k) ||
-            error("Invalid log.toml v1: missing [$where].$k at $path")
+        haskey(d, k) || error("Invalid log.toml v1: missing [$where].$k at $path")
         return d[k]
     end
 
-    meta   = _need(parsed, "meta",   "")
-    study  = _need(parsed, "study",  "")
-    run    = _need(parsed, "run",    "")
+    meta = _need(parsed, "meta", "")
+    study = _need(parsed, "study", "")
+    run = _need(parsed, "run", "")
     layout = _need(parsed, "layout", "")
-    pathb  = _need(parsed, "path",   "")
-    prov   = _need(parsed, "provenance", "")
+    pathb = _need(parsed, "path", "")
+    prov = _need(parsed, "provenance", "")
 
     LogTomlV1(
-        _need(meta,  "log_toml_version",   "meta"),
-        _need(meta,  "datavault_version",  "meta"),
-        get(meta,    "datavault_git_hash", "unknown"),
-        _need(meta,  "created_at",         "meta"),
-        _need(study, "project_name",       "study"),
-        _need(study, "config",             "study"),
-        _need(run,   "name",               "run"),
-        _need(layout, "data_dir",          "layout"),
-        _need(layout, "status_dir",        "layout"),
-        _need(layout, "bin_dir",           "layout"),
-        _need(layout, "ledger",            "layout"),
-        _need(layout, "config_snapshot",   "layout"),
-        _need(pathb, "scheme",             "path"),
-        _need(pathb, "formatter",          "path"),
+        _need(meta, "log_toml_version", "meta"),
+        _need(meta, "datavault_version", "meta"),
+        get(meta, "datavault_git_hash", "unknown"),
+        _need(meta, "created_at", "meta"),
+        _need(study, "project_name", "study"),
+        _need(study, "config", "study"),
+        _need(run, "name", "run"),
+        _need(layout, "data_dir", "layout"),
+        _need(layout, "status_dir", "layout"),
+        _need(layout, "bin_dir", "layout"),
+        _need(layout, "ledger", "layout"),
+        _need(layout, "config_snapshot", "layout"),
+        _need(pathb, "scheme", "path"),
+        _need(pathb, "formatter", "path"),
         Vector{String}(_need(pathb, "keys", "path")),
-        _need(prov,  "julia_version",      "provenance"),
-        _need(prov,  "hostname",           "provenance"),
+        _need(prov, "julia_version", "provenance"),
+        _need(prov, "hostname", "provenance"),
     )
 end
 
@@ -191,20 +189,21 @@ Behavior:
 Atomic: writes via tmp + rename so concurrent jobs cannot leave a partial file.
 """
 function _save_log_toml(vault::Vault)::String
-    project   = vault.spec.study.project_name
-    dv_dir    = joinpath(vault.outdir, DATAVAULT_DIR_NAME)
+    project = vault.spec.study.project_name
+    dv_dir = joinpath(vault.outdir, DATAVAULT_DIR_NAME)
     study_dir = joinpath(dv_dir, project)
-    log_path  = joinpath(study_dir, "$(vault.run).log.toml")
+    log_path = joinpath(study_dir, "$(vault.run).log.toml")
 
     _ensure_datavault_readme(dv_dir)
     mkpath(study_dir)
 
     is_default_formatter = vault.path_formatter === ParamIO.format_path
     if !is_default_formatter
-        @warn "Custom path_formatter — path scheme is not reproducible from log.toml alone" run = vault.run
+        @warn "Custom path_formatter — path scheme is not reproducible from log.toml alone" run =
+            vault.run
     end
-    formatter_name = is_default_formatter ? "ParamIO.format_path" :
-                     string(nameof(vault.path_formatter))
+    formatter_name =
+        is_default_formatter ? "ParamIO.format_path" : string(nameof(vault.path_formatter))
     scheme_name = is_default_formatter ? "default" : "custom"
 
     created_at = if isfile(log_path)
@@ -223,41 +222,31 @@ function _save_log_toml(vault::Vault)::String
     end
 
     layout = Dict(
-        "data_dir"        => relpath(_run_data_dir(vault),   vault.outdir),
-        "status_dir"      => relpath(_run_status_dir(vault), vault.outdir),
-        "bin_dir"         => relpath(_run_bin_dir(vault),    vault.outdir),
-        "ledger"          => relpath(
-            joinpath(_run_data_dir(vault), "ledger.csv"), vault.outdir,
-        ),
-        "config_snapshot" => relpath(
-            joinpath(_run_data_dir(vault), "config_snapshot.toml"), vault.outdir,
-        ),
+        "data_dir" => relpath(_run_data_dir(vault), vault.outdir),
+        "status_dir" => relpath(_run_status_dir(vault), vault.outdir),
+        "bin_dir" => relpath(_run_bin_dir(vault), vault.outdir),
+        "ledger" => relpath(joinpath(_run_data_dir(vault), "ledger.csv"), vault.outdir),
+        "config_snapshot" =>
+            relpath(joinpath(_run_data_dir(vault), "config_snapshot.toml"), vault.outdir),
     )
 
     payload = Dict(
         "meta" => Dict(
-            "log_toml_version"   => LOG_TOML_VERSION,
-            "datavault_version"  => _datavault_pkg_version(),
+            "log_toml_version" => LOG_TOML_VERSION,
+            "datavault_version" => _datavault_pkg_version(),
             "datavault_git_hash" => _datavault_git_hash(),
-            "created_at"         => created_at,
+            "created_at" => created_at,
         ),
-        "study" => Dict(
-            "project_name" => project,
-            "config"       => vault.config_path,
-        ),
-        "run" => Dict(
-            "name" => vault.run,
-        ),
+        "study" => Dict("project_name" => project, "config" => vault.config_path),
+        "run" => Dict("name" => vault.run),
         "layout" => layout,
         "path" => Dict(
-            "scheme"    => scheme_name,
+            "scheme" => scheme_name,
             "formatter" => formatter_name,
-            "keys"      => vault.spec.path_keys,
+            "keys" => vault.spec.path_keys,
         ),
-        "provenance" => Dict(
-            "julia_version" => string(VERSION),
-            "hostname"      => gethostname(),
-        ),
+        "provenance" =>
+            Dict("julia_version" => string(VERSION), "hostname" => gethostname()),
     )
 
     _atomic_toml_write(log_path, payload)
@@ -274,12 +263,7 @@ function _atomic_toml_write(path::AbstractString, data::Dict)
     mkpath(dirname(path))
     # Per-task unique suffix so concurrent writers within the same process
     # do not collide on the tmp file (pid alone is not enough under Threads).
-    tmp = string(
-        path, ".tmp.",
-        getpid(), ".",
-        objectid(current_task()), ".",
-        time_ns(),
-    )
+    tmp = string(path, ".tmp.", getpid(), ".", objectid(current_task()), ".", time_ns())
     try
         open(tmp, "w") do io
             TOML.print(io, data)

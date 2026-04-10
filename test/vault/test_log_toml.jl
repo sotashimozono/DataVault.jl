@@ -239,8 +239,10 @@ end
         # Plant a future-version log.toml for this study/run
         dv_study = joinpath(outdir, DataVault.DATAVAULT_DIR_NAME, "test_study")
         mkpath(dv_study)
-        cp(joinpath(LT_FIXTURES, "log_v99_unknown.toml"),
-           joinpath(dv_study, "default.log.toml"))
+        cp(
+            joinpath(LT_FIXTURES, "log_v99_unknown.toml"),
+            joinpath(dv_study, "default.log.toml"),
+        )
 
         ex = try
             Vault(LT_CONFIG; outdir=outdir)
@@ -268,9 +270,9 @@ end
 @testset "C.2 multiple runs coexist under the same study" begin
     outdir = mktempdir()
     try
-        Vault(LT_CONFIG; run="phase1",         outdir=outdir)
+        Vault(LT_CONFIG; run="phase1", outdir=outdir)
         Vault(LT_CONFIG; run="phase2_refined", outdir=outdir)
-        Vault(LT_CONFIG; run="default",        outdir=outdir)
+        Vault(LT_CONFIG; run="default", outdir=outdir)
 
         dv_study = joinpath(outdir, DataVault.DATAVAULT_DIR_NAME, "test_study")
         @test isfile(joinpath(dv_study, "phase1.log.toml"))
@@ -286,12 +288,15 @@ end
 @testset "C.3 run appears in data/status/bin path segments" begin
     with_run_vault(run="phase1") do vault, outdir
         key = DataVault.keys(vault)[1]
-        @test occursin(joinpath("data", "test_study", "phase1"),
-                       DataVault._data_dir(vault, key))
-        @test occursin(joinpath("status", "test_study", "phase1"),
-                       DataVault._status_dir(vault, key))
-        @test occursin(joinpath("bin", "test_study", "phase1"),
-                       DataVault._bin_dir(vault, key))
+        @test occursin(
+            joinpath("data", "test_study", "phase1"), DataVault._data_dir(vault, key)
+        )
+        @test occursin(
+            joinpath("status", "test_study", "phase1"), DataVault._status_dir(vault, key)
+        )
+        @test occursin(
+            joinpath("bin", "test_study", "phase1"), DataVault._bin_dir(vault, key)
+        )
     end
 end
 
@@ -324,9 +329,9 @@ end
         )
         info = read_log_toml(log_path)
 
-        @test joinpath(outdir, info.data_dir)   == DataVault._run_data_dir(vault)
+        @test joinpath(outdir, info.data_dir) == DataVault._run_data_dir(vault)
         @test joinpath(outdir, info.status_dir) == DataVault._run_status_dir(vault)
-        @test joinpath(outdir, info.bin_dir)    == DataVault._run_bin_dir(vault)
+        @test joinpath(outdir, info.bin_dir) == DataVault._run_bin_dir(vault)
     end
 end
 
@@ -368,8 +373,7 @@ end
         @test info.path_keys == ["system.N", "model.g"]
 
         # No leftover tmp files from interrupted writes
-        leftovers = filter(f -> occursin(".tmp.", f),
-                           readdir(dirname(log_path); join=true))
+        leftovers = filter(f -> occursin(".tmp.", f), readdir(dirname(log_path); join=true))
         @test isempty(leftovers)
     finally
         rm(outdir; recursive=true, force=true)
@@ -420,9 +424,9 @@ end
         @test info.path_keys == ["system.N", "model.g"]
 
         # 3. Reconstruct paths from log.toml alone
-        data_dir_abs   = joinpath(outdir, info.data_dir)
-        ledger_path    = joinpath(outdir, info.ledger)
-        snapshot_path  = joinpath(outdir, info.config_snapshot)
+        data_dir_abs = joinpath(outdir, info.data_dir)
+        ledger_path = joinpath(outdir, info.ledger)
+        snapshot_path = joinpath(outdir, info.config_snapshot)
         @test isdir(data_dir_abs)
         @test isfile(ledger_path)
         @test isfile(snapshot_path)
