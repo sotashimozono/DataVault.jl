@@ -33,6 +33,7 @@ export Vault
 export DataKey                          # re-export from ParamIO
 export is_done, mark_done!, mark_running!
 export build_ledger, record_figure, cleanup_stale
+export read_log_toml, find_log_tomls    # log.toml discovery API
 
 # ── 依存順序 ─────────────────────────────────────────────────────────────────
 # paths.jl は vault.jl の Vault に依存
@@ -42,12 +43,13 @@ export build_ledger, record_figure, cleanup_stale
 # reporting/* は paths.jl と io/* に依存
 
 include("core/vault.jl")
-include("core/paths.jl")
+include("core/paths.jl")        # _run_*_dir 等を log_toml.jl から使う
 
 include("io/atomic.jl")
 include("io/data.jl")
 include("io/status.jl")
 
+include("util/log_toml.jl")    # vault.jl の constructor から呼ばれる
 include("util/snapshot.jl")    # vault.jl の constructor から呼ばれる
 include("util/enumerate.jl")
 include("util/cleanup.jl")

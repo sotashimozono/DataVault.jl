@@ -1,0 +1,12 @@
+# write-once fixture: a log.toml whose [meta] envelope is missing.
+# DO NOT EDIT. See fixtures/README.md.
+#
+# Used to verify that read_log_toml() validates the envelope and surfaces
+# a clear error rather than crashing on a KeyError deep inside the reader.
+
+[study]
+project_name = "test_study"
+config       = "configs/test_study.toml"
+
+[run]
+name = "phase1"

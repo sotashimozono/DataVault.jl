@@ -7,7 +7,7 @@ Remove all `.running` sentinel files under the status directory.
 Returns the number of files removed.
 """
 function cleanup_stale(vault::Vault)::Int
-    status_base = joinpath(vault.outdir, "status")
+    status_base = _run_status_dir(vault)
     isdir(status_base) || return 0
 
     count = 0

@@ -39,14 +39,18 @@ end
 
 @testset "Vault: config snapshot created" begin
     with_vault() do vault, outdir
-        snapshot = joinpath(outdir, "data", "test_study", "config_snapshot.toml")
+        snapshot = joinpath(
+            outdir, "data", "test_study", "default", "config_snapshot.toml"
+        )
         @test isfile(snapshot)
     end
 end
 
 @testset "Vault: config snapshot warns on change" begin
     with_vault() do vault, outdir
-        snapshot = joinpath(outdir, "data", "test_study", "config_snapshot.toml")
+        snapshot = joinpath(
+            outdir, "data", "test_study", "default", "config_snapshot.toml"
+        )
         # Overwrite snapshot with a different parameter value
         raw = TOML.parsefile(snapshot)
         raw["study"]["total_samples"] = 999
