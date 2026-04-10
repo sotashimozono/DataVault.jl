@@ -1,0 +1,17 @@
+# write-once fixture: a log.toml from a hypothetical future DataVault.
+# DO NOT EDIT. See fixtures/README.md.
+#
+# Used to verify that read_log_toml() rejects unknown versions explicitly
+# (rather than silently misinterpreting the body) and surfaces a helpful
+# error message telling the user to upgrade DataVault.
+
+[meta]
+log_toml_version   = 99
+datavault_version  = "9.9.9"
+datavault_git_hash = "f00d"
+created_at         = "2099-01-01T00:00:00"
+
+# The body shape is intentionally unspecified — a v99 reader would know how
+# to parse it, but the current DataVault must not even attempt to read it.
+[whatever]
+shape = "unknown"

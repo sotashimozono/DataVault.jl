@@ -9,9 +9,9 @@ Returns the path to the written file.
 function build_ledger(vault::Vault)::String
     done_keys = keys(vault; status=:done)::Vector{DataKey}
 
-    project_dir = joinpath(vault.outdir, "data", vault.spec.study.project_name)
-    ledger_path = joinpath(project_dir, "ledger.csv")
-    mkpath(project_dir)
+    run_dir = _run_data_dir(vault)
+    ledger_path = joinpath(run_dir, "ledger.csv")
+    mkpath(run_dir)
 
     if isempty(done_keys)
         write(ledger_path, "")

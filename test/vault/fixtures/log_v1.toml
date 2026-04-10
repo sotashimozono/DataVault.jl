@@ -1,0 +1,36 @@
+# write-once fixture for log.toml schema v1.
+# DO NOT EDIT. See fixtures/README.md.
+#
+# This file represents what a real DataVault v0.3.0 would write to
+# .datavault/test_study/phase1.log.toml. Future DataVault versions must
+# always be able to read this file via the v1 reader registered in
+# LOG_TOML_READERS.
+
+[meta]
+log_toml_version   = 1
+datavault_version  = "0.3.0"
+datavault_git_hash = "abc1234"
+created_at         = "2026-04-10T13:50:00"
+
+[study]
+project_name = "test_study"
+config       = "configs/test_study.toml"
+
+[run]
+name = "phase1"
+
+[layout]
+data_dir        = "data/test_study/phase1"
+status_dir      = "status/test_study/phase1"
+bin_dir         = "bin/test_study/phase1"
+ledger          = "data/test_study/phase1/ledger.csv"
+config_snapshot = "data/test_study/phase1/config_snapshot.toml"
+
+[path]
+scheme    = "default"
+formatter = "ParamIO.format_path"
+keys      = ["system.N", "model.g"]
+
+[provenance]
+julia_version = "1.12.2"
+hostname      = "fixture-host"
