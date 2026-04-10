@@ -34,6 +34,7 @@ export DataKey                          # re-export from ParamIO
 export is_done, mark_done!, mark_running!
 export build_ledger, record_figure, cleanup_stale
 export read_log_toml, find_log_tomls    # log.toml discovery API
+export attach, open_all, load_ledger, build_master_ledger, AttachedStudy
 
 # ── 依存順序 ─────────────────────────────────────────────────────────────────
 # paths.jl は vault.jl の Vault に依存
@@ -53,6 +54,7 @@ include("util/log_toml.jl")    # vault.jl の constructor から呼ばれる
 include("util/snapshot.jl")    # vault.jl の constructor から呼ばれる
 include("util/enumerate.jl")
 include("util/cleanup.jl")
+include("util/query.jl")       # attach / open_all / load_ledger / build_master_ledger
 
 include("reporting/ledger.jl")
 include("reporting/figure.jl")
