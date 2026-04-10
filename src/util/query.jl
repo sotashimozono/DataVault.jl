@@ -147,10 +147,10 @@ function build_master_ledger(outdir::AbstractString)::Vector{Dict{String,String}
         log_rel = relpath(attached.log_path, outdir)
         for row in local_rows
             merged = copy(row)
-            merged["project_name"]      = attached.info.project_name
-            merged["run"]                = attached.info.run
-            merged["datavault_version"]  = attached.info.datavault_version
-            merged["log_toml"]           = log_rel
+            merged["project_name"] = attached.info.project_name
+            merged["run"] = attached.info.run
+            merged["datavault_version"] = attached.info.datavault_version
+            merged["log_toml"] = log_rel
             push!(rows, merged)
         end
     end
@@ -167,7 +167,7 @@ to catch paths that don't match the contract.
 """
 function _infer_outdir(log_path::AbstractString)::String
     # {outdir}/.datavault/{project}/{run}.log.toml
-    project_dir  = dirname(log_path)      # .../.datavault/{project}
+    project_dir = dirname(log_path)      # .../.datavault/{project}
     datavault_dir = dirname(project_dir)  # .../.datavault
     basename(datavault_dir) == DATAVAULT_DIR_NAME || error(
         "log.toml at $log_path is not under a $(DATAVAULT_DIR_NAME)/ directory; " *

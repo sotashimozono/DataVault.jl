@@ -17,7 +17,7 @@ const Q_CONFIG = joinpath(Q_FIXTURES, "study.toml")
     try
         v0 = Vault(Q_CONFIG; run="phase1", outdir=outdir)
         log_path = joinpath(
-            outdir, DataVault.DATAVAULT_DIR_NAME, "test_study", "phase1.log.toml",
+            outdir, DataVault.DATAVAULT_DIR_NAME, "test_study", "phase1.log.toml"
         )
 
         v1 = attach(log_path)
@@ -65,7 +65,7 @@ end
         Vault(Q_CONFIG; run="phase1", outdir=outdir)
 
         log_path = joinpath(
-            outdir, DataVault.DATAVAULT_DIR_NAME, "test_study", "phase1.log.toml",
+            outdir, DataVault.DATAVAULT_DIR_NAME, "test_study", "phase1.log.toml"
         )
         parsed = TOML.parsefile(log_path)
         parsed["study"]["config"] = "/absolutely/nonexistent/study.toml"
@@ -86,8 +86,10 @@ end
     try
         dv_study = joinpath(outdir, DataVault.DATAVAULT_DIR_NAME, "future_study")
         mkpath(dv_study)
-        cp(joinpath(Q_FIXTURES, "log_v99_unknown.toml"),
-           joinpath(dv_study, "default.log.toml"))
+        cp(
+            joinpath(Q_FIXTURES, "log_v99_unknown.toml"),
+            joinpath(dv_study, "default.log.toml"),
+        )
 
         ex = try
             attach(outdir; project="future_study", run="default")
@@ -135,10 +137,14 @@ end
         # Plant a broken (missing-meta) log.toml as a second entry
         dv_study = joinpath(outdir, DataVault.DATAVAULT_DIR_NAME, "broken_study")
         mkpath(dv_study)
-        cp(joinpath(Q_FIXTURES, "log_v1_missing_meta.toml"),
-           joinpath(dv_study, "default.log.toml"))
+        cp(
+            joinpath(Q_FIXTURES, "log_v1_missing_meta.toml"),
+            joinpath(dv_study, "default.log.toml"),
+        )
 
-        attached = @test_logs (:warn, r"Failed to attach") match_mode = :any open_all(outdir)
+        attached = @test_logs (:warn, r"Failed to attach") match_mode = :any open_all(
+            outdir
+        )
         @test length(attached) == 1
         @test attached[1].info.project_name == "test_study"
     finally
