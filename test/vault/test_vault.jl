@@ -247,15 +247,15 @@ end
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
-@testset "cleanup_stale: removes .running files" begin
+@testset "cleanup_stale: removes stale .running files (stale_after=0)" begin
     with_vault() do vault, outdir
         ks = DataVault.keys(vault)[1:3]
         for k in ks
-            ;
-            mark_running!(vault, k);
+            mark_running!(vault, k)
         end
 
-        n = cleanup_stale(vault)
+        # stale_after=0 で全削除 (旧動作互換)
+        n = cleanup_stale(vault; stale_after=0.0)
         @test n == 3
 
         running = filter(
@@ -270,9 +270,46 @@ end
     end
 end
 
+@testset "cleanup_stale: keeps fresh .running files by default" begin
+    with_vault() do vault, outdir
+        ks = DataVault.keys(vault)[1:2]
+        for k in ks
+            mark_running!(vault, k)
+        end
+
+        # デフォルト stale_after=600s → 作りたてのファイルは残る
+        n = cleanup_stale(vault)
+        @test n == 0
+    end
+end
+
 @testset "cleanup_stale: returns 0 if no status dir" begin
     with_vault() do vault, _
         @test cleanup_stale(vault) == 0
+    end
+end
+
+@testset "mark_running!/touch_running!/running_heartbeat round-trip" begin
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        @test !is_running(vault, k)
+
+        mark_running!(vault, k)
+        @test is_running(vault, k)
+
+        hb1 = running_heartbeat(vault, k)
+        @test hb1 !== nothing
+        @test hb1 isa Dates.DateTime
+
+        sleep(1.1)
+        touch_running!(vault, k)
+        hb2 = running_heartbeat(vault, k)
+        @test hb2 !== nothing
+        @test hb2 > hb1
+
+        clear_running!(vault, k)
+        @test !is_running(vault, k)
+        @test running_heartbeat(vault, k) === nothing
     end
 end
 

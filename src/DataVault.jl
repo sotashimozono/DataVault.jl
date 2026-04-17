@@ -31,7 +31,8 @@ import Base: keys
 
 export Vault
 export DataKey                          # re-export from ParamIO
-export is_done, mark_done!, mark_running!
+export is_done, mark_done!, mark_running!, touch_running!, running_heartbeat
+export clear_running!, is_running
 export build_ledger, record_figure, cleanup_stale
 export read_log_toml, find_log_tomls    # log.toml discovery API
 export attach, open_all, load_ledger, build_master_ledger, AttachedStudy
