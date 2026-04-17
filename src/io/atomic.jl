@@ -31,7 +31,7 @@ or `"unknown"` if not in a repo.
 function _git_hash(ref_path::String)::String
     dir = isdir(ref_path) ? ref_path : dirname(ref_path)
     try
-        strip(read(`git -C $dir rev-parse --short HEAD`, String))
+        strip(read(pipeline(`git -C $dir rev-parse --short HEAD`; stderr=devnull), String))
     catch
         "unknown"
     end
