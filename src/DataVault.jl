@@ -39,6 +39,7 @@ export build_ledger, record_figure, cleanup_stale
 export archive_figure!, list_figure_history, restore_figure!
 export build_experiment_report, build_experiments_index, gather_code_versions
 export read_schema_record, check_schema_compat
+export new_experiment, build_narrative_index, experiment_template
 export read_log_toml, find_log_tomls    # log.toml discovery API
 export attach, open_all, load_ledger, build_master_ledger, AttachedStudy
 
@@ -65,5 +66,6 @@ include("util/query.jl")       # attach / open_all / load_ledger / build_master_
 include("reporting/ledger.jl")
 include("reporting/figure.jl")
 include("reporting/report.jl")
+include("experiment/workflow.jl")
 
 end # module DataVault
