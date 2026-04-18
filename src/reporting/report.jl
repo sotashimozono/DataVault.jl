@@ -20,8 +20,7 @@ struct _WriterInfo
 end
 
 function _introspect_writer(
-    writer::Module,
-    data_schema_version_kwarg::Union{Nothing,Integer},
+    writer::Module, data_schema_version_kwarg::Union{Nothing,Integer}
 )::_WriterInfo
     name = String(nameof(writer))
 
@@ -43,8 +42,11 @@ function _introspect_writer(
         Int(data_schema_version_kwarg)
     elseif isdefined(writer, :DATA_SCHEMA_VERSION)
         val = Base.invokelatest(getglobal, writer, :DATA_SCHEMA_VERSION)
-        val isa Integer ? Int(val) :
-        (@warn "writer $name.DATA_SCHEMA_VERSION is not an Integer" value=val; 0)
+        if val isa Integer
+            Int(val)
+        else
+            (@warn "writer $name.DATA_SCHEMA_VERSION is not an Integer" value=val; 0)
+        end
     else
         0
     end
@@ -121,7 +123,8 @@ function _introspect_schema_keys(vault::Vault)
     catch e
         @warn "schema introspection failed" file=jld_path exception=e
     end
-    sort!(top); sort!(bench)
+    sort!(top);
+    sort!(bench)
     (top, bench)
 end
 
@@ -169,9 +172,7 @@ function _build_schema_payload(
             "parent_git_hash" => parent_hash,
             "submodule_git_hashes" => submod,
         ),
-        "datavault" => Dict{String,Any}(
-            "version" => _datavault_pkg_version(),
-        ),
+        "datavault" => Dict{String,Any}("version" => _datavault_pkg_version()),
         "schema" => Dict{String,Any}(
             "data_schema_version" => writer.data_schema_version,
             "top_level_keys" => top_keys,
@@ -259,7 +260,8 @@ end
 function _parse_events_jsonl(outdir::AbstractString)::Union{Nothing,_TimingSummary}
     files = String[]
     for f in readdir(outdir)
-        startswith(f, "events_") && endswith(f, ".jsonl") &&
+        startswith(f, "events_") &&
+            endswith(f, ".jsonl") &&
             push!(files, joinpath(outdir, f))
     end
     isempty(files) && return nothing
@@ -348,7 +350,9 @@ struct _LedgerProgress
     path_key_breakdown::Vector{Pair{String,Int}}
 end
 
-function _ledger_progress(csv_path::AbstractString, path_keys::Vector{String})::_LedgerProgress
+function _ledger_progress(
+    csv_path::AbstractString, path_keys::Vector{String}
+)::_LedgerProgress
     isfile(csv_path) || return _LedgerProgress(0, String[], Pair{String,Int}[])
     lines = readlines(csv_path)
     isempty(lines) && return _LedgerProgress(0, String[], Pair{String,Int}[])
@@ -381,7 +385,9 @@ function _expected_total(spec)::Int
     end
 end
 
-function _collect_figures(outdir::AbstractString, project::AbstractString, run::AbstractString)
+function _collect_figures(
+    outdir::AbstractString, project::AbstractString, run::AbstractString
+)
     fig_dir = joinpath(outdir, "figure", project, run)
     isdir(fig_dir) || return String[]
     out = String[]
@@ -398,7 +404,9 @@ function _collect_figures(outdir::AbstractString, project::AbstractString, run::
     sort!(out)
 end
 
-function _run_data_dir_abs(outdir::AbstractString, project::AbstractString, run::AbstractString)::String
+function _run_data_dir_abs(
+    outdir::AbstractString, project::AbstractString, run::AbstractString
+)::String
     joinpath(outdir, "data", project, run)
 end
 
@@ -479,10 +487,18 @@ function _render_report(
             sorted = sort(timing.seconds)
             ν = sorted[div(end + 1, 2)]
             M = maximum(timing.seconds)
-            println(io, "- Per-key seconds: mean ", round(μ; digits=2),
-                    ", median ", round(ν; digits=2), ", max ", round(M; digits=2))
+            println(
+                io,
+                "- Per-key seconds: mean ",
+                round(μ; digits=2),
+                ", median ",
+                round(ν; digits=2),
+                ", max ",
+                round(M; digits=2),
+            )
         end
-        !isempty(timing.first_start) && println(io, "- First key_start: ", timing.first_start)
+        !isempty(timing.first_start) &&
+            println(io, "- First key_start: ", timing.first_start)
         !isempty(timing.last_done) && println(io, "- Last  key_done:  ", timing.last_done)
         if !isempty(timing.longest)
             println(io)
@@ -566,8 +582,8 @@ function build_experiment_report(
         ""
     end
 
-    code_versions = isempty(root) ? Dict{String,String}("parent" => "") :
-                    gather_code_versions(root)
+    code_versions =
+        isempty(root) ? Dict{String,String}("parent" => "") : gather_code_versions(root)
 
     top_keys, bench_keys = _introspect_schema_keys(vault)
     schema_path = _write_schema_toml(vault, winfo, code_versions, top_keys, bench_keys)
@@ -580,8 +596,16 @@ function build_experiment_report(
     figures = _collect_figures(vault.outdir, vault.spec.study.project_name, vault.run)
 
     md = _render_report(
-        vault, winfo, code_versions, top_keys, bench_keys,
-        progress, expected, timing, figures, schema_path,
+        vault,
+        winfo,
+        code_versions,
+        top_keys,
+        bench_keys,
+        progress,
+        expected,
+        timing,
+        figures,
+        schema_path,
     )
 
     out_path = joinpath(_run_data_dir(vault), output_name)
@@ -603,8 +627,7 @@ ledger activity.
 Returns the absolute path of `INDEX.md`.
 """
 function build_experiments_index(
-    outdir::AbstractString,
-    project_name::AbstractString,
+    outdir::AbstractString, project_name::AbstractString
 )::String
     project_dir = joinpath(outdir, "data", project_name)
     index_path = joinpath(project_dir, "INDEX.md")
@@ -650,8 +673,22 @@ function build_experiments_index(
     println(io, "| Run | Snapshot | Completed | Parent git | Latest activity |")
     println(io, "|-----|----------|-----------|------------|-----------------|")
     for r in rows
-        println(io, "| [", r.run, "](", r.run, "/README.md) | ", r.snap, " | ",
-                r.completed, " | `", r.parent_hash, "` | ", r.latest, " |")
+        println(
+            io,
+            "| [",
+            r.run,
+            "](",
+            r.run,
+            "/README.md) | ",
+            r.snap,
+            " | ",
+            r.completed,
+            " | `",
+            r.parent_hash,
+            "` | ",
+            r.latest,
+            " |",
+        )
     end
     write(index_path, String(take!(io)))
     index_path
@@ -692,17 +729,17 @@ function read_schema_record(vault::Vault)
         submod[String(k)] = String(v)
     end
     (;
-        package = String(get(w, "package", "")),
-        package_version = String(get(w, "package_version", "")),
-        package_root = String(get(w, "package_root", "")),
-        parent_git_hash = String(get(w, "parent_git_hash", "")),
-        submodule_git_hashes = submod,
-        data_schema_version = Int(get(s, "data_schema_version", 0)),
-        top_level_keys = String.(get(s, "top_level_keys", String[])),
-        bench_keys = String.(get(s, "bench_keys", String[])),
-        datavault_version = String(get(d, "version", "")),
-        created_at = String(get(c, "at", "")),
-        hostname = String(get(c, "hostname", "")),
+        package=String(get(w, "package", "")),
+        package_version=String(get(w, "package_version", "")),
+        package_root=String(get(w, "package_root", "")),
+        parent_git_hash=String(get(w, "parent_git_hash", "")),
+        submodule_git_hashes=submod,
+        data_schema_version=Int(get(s, "data_schema_version", 0)),
+        top_level_keys=String.(get(s, "top_level_keys", String[])),
+        bench_keys=String.(get(s, "bench_keys", String[])),
+        datavault_version=String(get(d, "version", "")),
+        created_at=String(get(c, "at", "")),
+        hostname=String(get(c, "hostname", "")),
     )
 end
 
@@ -739,32 +776,32 @@ function check_schema_compat(
     rec = read_schema_record(vault)
     if rec === nothing
         return (;
-            ok = false,
-            status = :legacy,
-            missing_fields = String[],
-            extra_fields = String[],
-            notes = "no schema.toml (pre-0.5.0 run)",
+            ok=false,
+            status=:legacy,
+            missing_fields=String[],
+            extra_fields=String[],
+            notes="no schema.toml (pre-0.5.0 run)",
         )
     end
 
     if rec.package != String(reader_package)
         return (;
-            ok = false,
-            status = :mismatch,
-            missing_fields = String[],
-            extra_fields = String[],
-            notes = "writer package `$(rec.package)` ≠ reader_package `$reader_package`",
+            ok=false,
+            status=:mismatch,
+            missing_fields=String[],
+            extra_fields=String[],
+            notes="writer package `$(rec.package)` ≠ reader_package `$reader_package`",
         )
     end
 
     if !isempty(reader_min_writer_version) &&
-       _vcompare(rec.package_version, reader_min_writer_version) < 0
+        _vcompare(rec.package_version, reader_min_writer_version) < 0
         return (;
-            ok = false,
-            status = :mismatch,
-            missing_fields = String[],
-            extra_fields = String[],
-            notes = "writer version $(rec.package_version) < required $reader_min_writer_version",
+            ok=false,
+            status=:mismatch,
+            missing_fields=String[],
+            extra_fields=String[],
+            notes="writer version $(rec.package_version) < required $reader_min_writer_version",
         )
     end
 
@@ -774,21 +811,15 @@ function check_schema_compat(
 
     if !isempty(missing)
         return (;
-            ok = false,
-            status = :partial,
-            missing_fields = missing,
-            extra_fields = extra,
-            notes = "missing fields; reader may use derive fallback",
+            ok=false,
+            status=:partial,
+            missing_fields=missing,
+            extra_fields=extra,
+            notes="missing fields; reader may use derive fallback",
         )
     end
 
-    (;
-        ok = true,
-        status = :match,
-        missing_fields = String[],
-        extra_fields = extra,
-        notes = "ok",
-    )
+    (; ok=true, status=:match, missing_fields=String[], extra_fields=extra, notes="ok")
 end
 
 """
@@ -801,7 +832,13 @@ function _vcompare(a::AbstractString, b::AbstractString)::Int
     va = tryparse(VersionNumber, String(a))
     vb = tryparse(VersionNumber, String(b))
     if va !== nothing && vb !== nothing
-        return va < vb ? -1 : va > vb ? 1 : 0
+        return if va < vb
+            -1
+        elseif va > vb
+            1
+        else
+            0
+        end
     end
     return cmp(String(a), String(b))
 end

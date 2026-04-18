@@ -31,7 +31,11 @@ end
 
         # Plant one completed sample JLD2 so schema introspection has keys.
         key = DataVault.keys(vault)[1]
-        DataVault.save!(vault, key, Dict("bench" => Dict("betas" => [0.0, 0.5], "energy_raw" => [1.0, 2.0])))
+        DataVault.save!(
+            vault,
+            key,
+            Dict("bench" => Dict("betas" => [0.0, 0.5], "energy_raw" => [1.0, 2.0])),
+        )
         mark_done!(vault, key)
         build_ledger(vault)
 
@@ -39,8 +43,15 @@ end
 
         @test isfile(readme)
         content = read(readme, String)
-        for section in ["## Identity", "## Code versions", "## Config",
-                        "## Progress", "## Timing", "## Figures", "## Schema"]
+        for section in [
+            "## Identity",
+            "## Code versions",
+            "## Config",
+            "## Progress",
+            "## Timing",
+            "## Figures",
+            "## Schema",
+        ]
             @test occursin(section, content)
         end
         # Writer reflection worked
@@ -121,7 +132,7 @@ end
     with_report_vault() do vault, _
         # :legacy
         r = check_schema_compat(
-            vault; reader_package="FakeWriter", reader_min_writer_version="0.1.0",
+            vault; reader_package="FakeWriter", reader_min_writer_version="0.1.0"
         )
         @test r.status == :legacy
         @test r.ok == false
@@ -134,7 +145,7 @@ end
 
         # :mismatch (package name differs)
         r = check_schema_compat(
-            vault; reader_package="OtherPkg", reader_min_writer_version="0.1.0",
+            vault; reader_package="OtherPkg", reader_min_writer_version="0.1.0"
         )
         @test r.status == :mismatch
 
@@ -167,13 +178,23 @@ end
     try
         cd(root) do
             run(pipeline(`git init --quiet`; stderr=devnull))
-            run(pipeline(`git -c user.email=t@t -c user.name=t commit --allow-empty -m seed --quiet`; stderr=devnull))
+            run(
+                pipeline(
+                    `git -c user.email=t@t -c user.name=t commit --allow-empty -m seed --quiet`;
+                    stderr=devnull,
+                ),
+            )
         end
         submod = joinpath(root, "submodules", "FooLib")
         mkpath(submod)
         cd(submod) do
             run(pipeline(`git init --quiet`; stderr=devnull))
-            run(pipeline(`git -c user.email=t@t -c user.name=t commit --allow-empty -m seed --quiet`; stderr=devnull))
+            run(
+                pipeline(
+                    `git -c user.email=t@t -c user.name=t commit --allow-empty -m seed --quiet`;
+                    stderr=devnull,
+                ),
+            )
         end
 
         cv = gather_code_versions(root)
@@ -193,7 +214,8 @@ end
     try
         v1 = Vault(CONFIG_REPORT; outdir=outdir, run="r1")
         v2 = Vault(CONFIG_REPORT; outdir=outdir, run="r2")
-        build_ledger(v1); build_ledger(v2)
+        build_ledger(v1);
+        build_ledger(v2)
 
         idx = build_experiments_index(outdir, "test_study")
         @test isfile(idx)
@@ -214,8 +236,14 @@ end
         ev = joinpath(outdir, "events_host_1.jsonl")
         open(ev, "w") do io
             println(io, """{"kind":"key_start","ts":"2026-04-18T10:00:00","key":"a"}""")
-            println(io, """{"kind":"key_done","ts":"2026-04-18T10:00:05","key":"a","secs":5.0}""")
-            println(io, """{"kind":"key_done","ts":"2026-04-18T10:00:10","key":"b","secs":2.0}""")
+            println(
+                io,
+                """{"kind":"key_done","ts":"2026-04-18T10:00:05","key":"a","secs":5.0}""",
+            )
+            println(
+                io,
+                """{"kind":"key_done","ts":"2026-04-18T10:00:10","key":"b","secs":2.0}""",
+            )
         end
 
         readme = build_experiment_report(vault, writer)

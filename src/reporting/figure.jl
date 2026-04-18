@@ -93,7 +93,7 @@ function _archive_tag(vault::Vault, live_path::AbstractString)::String
 end
 
 function _find_existing_archive_by_hash(
-    fig_entry::Dict{String,Any}, content_hash::String,
+    fig_entry::Dict{String,Any}, content_hash::String
 )::Union{Nothing,String}
     versions = get(fig_entry, "versions", nothing)
     versions isa AbstractVector || return nothing
@@ -110,12 +110,12 @@ function _find_existing_archive_by_hash(
 end
 
 function _find_or_create_entry!(
-    data::Dict{String,Any}, name::AbstractString, subdir::AbstractString,
+    data::Dict{String,Any}, name::AbstractString, subdir::AbstractString
 )::Dict{String,Any}
     list = data["figures"]::Vector{Dict{String,Any}}
     for e in list
         if String(get(e, "name", "")) == String(name) &&
-           String(get(e, "subdir", "")) == String(subdir)
+            String(get(e, "subdir", "")) == String(subdir)
             return e
         end
     end
@@ -148,7 +148,8 @@ Returns the absolute path of the archived file (old or new).  Marks the
 new entry `is_current = true` and flips every older sibling to `false`.
 """
 function archive_figure!(
-    vault::Vault, live_path::AbstractString;
+    vault::Vault,
+    live_path::AbstractString;
     generator_script::Union{Nothing,AbstractString}=nothing,
     metadata::AbstractDict=Dict{String,Any}(),
     subdir::AbstractString="",
@@ -214,7 +215,7 @@ figure's versions are returned.  Each element:
        size_bytes, content_hash, is_current, tag, metadata)
 """
 function list_figure_history(
-    vault::Vault; name::Union{Nothing,AbstractString}=nothing,
+    vault::Vault; name::Union{Nothing,AbstractString}=nothing
 )::Vector{NamedTuple}
     data = _load_figures_toml(vault)
     out = Vector{NamedTuple}()
@@ -224,19 +225,22 @@ function list_figure_history(
         sub = String(get(entry, "subdir", ""))
         for v in get(entry, "versions", Vector{Dict{String,Any}}())
             md = get(v, "metadata", Dict{String,Any}())
-            push!(out, (;
-                name = nm,
-                subdir = sub,
-                generated_at = String(get(v, "generated_at", "")),
-                git_hash = String(get(v, "git_hash", "")),
-                generator = String(get(v, "generator", "")),
-                archive_path = String(get(v, "archive_path", "")),
-                size_bytes = Int(get(v, "size_bytes", 0)),
-                content_hash = String(get(v, "content_hash", "")),
-                is_current = Bool(get(v, "is_current", false)),
-                tag = String(get(v, "tag", "")),
-                metadata = Dict{String,Any}(string(k) => val for (k, val) in md),
-            ))
+            push!(
+                out,
+                (;
+                    name=nm,
+                    subdir=sub,
+                    generated_at=String(get(v, "generated_at", "")),
+                    git_hash=String(get(v, "git_hash", "")),
+                    generator=String(get(v, "generator", "")),
+                    archive_path=String(get(v, "archive_path", "")),
+                    size_bytes=Int(get(v, "size_bytes", 0)),
+                    content_hash=String(get(v, "content_hash", "")),
+                    is_current=Bool(get(v, "is_current", false)),
+                    tag=String(get(v, "tag", "")),
+                    metadata=Dict{String,Any}(string(k) => val for (k, val) in md),
+                ),
+            )
         end
     end
     out
@@ -254,7 +258,9 @@ Throws if the archive_tag does not exist for this (name, subdir).  Returns
 the absolute live path.
 """
 function restore_figure!(
-    vault::Vault, name::AbstractString, archive_tag::AbstractString;
+    vault::Vault,
+    name::AbstractString,
+    archive_tag::AbstractString;
     subdir::AbstractString="",
 )::String
     run_dir = _figures_run_dir(vault)
