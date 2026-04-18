@@ -83,10 +83,13 @@ function _save_figures_toml(vault::Vault, data::Dict{String,Any})
 end
 
 function _archive_tag(vault::Vault, live_path::AbstractString)::String
+    # Include a nanosecond suffix so concurrent/fast repeat calls do not
+    # collide on identical human-readable timestamps.
     ts = Dates.format(Dates.now(), "yyyy-mm-ddTHHMMSS")
+    ns = string(time_ns() % 1000000; pad=6)
     gh = _git_hash(live_path)
     isempty(gh) && (gh = "unknown")
-    string(ts, "_", gh)
+    string(ts, "-", ns, "_", gh)
 end
 
 function _find_existing_archive_by_hash(
@@ -94,9 +97,10 @@ function _find_existing_archive_by_hash(
 )::Union{Nothing,String}
     versions = get(fig_entry, "versions", nothing)
     versions isa AbstractVector || return nothing
+    needle = "sha1:" * content_hash
     for v in versions
         v isa AbstractDict || continue
-        if String(get(v, "content_hash", "")) == content_hash
+        if String(get(v, "content_hash", "")) == needle
             ap = String(get(v, "archive_path", ""))
             isempty(ap) && continue
             return ap

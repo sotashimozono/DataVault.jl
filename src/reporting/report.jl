@@ -42,7 +42,7 @@ function _introspect_writer(
     dsv = if data_schema_version_kwarg !== nothing
         Int(data_schema_version_kwarg)
     elseif isdefined(writer, :DATA_SCHEMA_VERSION)
-        val = getfield(writer, :DATA_SCHEMA_VERSION)
+        val = Base.invokelatest(getglobal, writer, :DATA_SCHEMA_VERSION)
         val isa Integer ? Int(val) :
         (@warn "writer $name.DATA_SCHEMA_VERSION is not an Integer" value=val; 0)
     else
