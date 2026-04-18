@@ -25,6 +25,8 @@ src/
 module DataVault
 
 using JLD2, TOML, Dates, Printf
+using SHA
+using JSON3
 using ParamIO
 
 import Base: keys
@@ -34,6 +36,9 @@ export DataKey                          # re-export from ParamIO
 export is_done, mark_done!, mark_running!, touch_running!, running_heartbeat
 export clear_running!, is_running
 export build_ledger, record_figure, cleanup_stale
+export archive_figure!, list_figure_history, restore_figure!
+export build_experiment_report, build_experiments_index, gather_code_versions
+export read_schema_record, check_schema_compat
 export read_log_toml, find_log_tomls    # log.toml discovery API
 export attach, open_all, load_ledger, build_master_ledger, AttachedStudy
 
@@ -59,5 +64,6 @@ include("util/query.jl")       # attach / open_all / load_ledger / build_master_
 
 include("reporting/ledger.jl")
 include("reporting/figure.jl")
+include("reporting/report.jl")
 
 end # module DataVault
