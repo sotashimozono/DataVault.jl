@@ -28,9 +28,7 @@ makedocs(;
     ),
     modules=[DataVault],
     pages=[
-        "Home" => "index.md",
-        "Workflow" => "workflow.md",
-        "Conventions" => "conventions.md",
+        "Home" => "index.md", "Workflow" => "workflow.md", "Conventions" => "conventions.md"
     ],
 )
 

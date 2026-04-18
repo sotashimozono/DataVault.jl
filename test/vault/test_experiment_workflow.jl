@@ -119,9 +119,7 @@ end
         mark_done!(vault, key)
         build_ledger(vault)
 
-        out = build_experiment_report(
-            vault, writer; experiments_root=experiments_root,
-        )
+        out = build_experiment_report(vault, writer; experiments_root=experiments_root)
         @test isfile(out)
 
         updated = read(readme_path, String)
@@ -159,9 +157,7 @@ end
 @testset "build_experiment_report: match_all overrides opt-in" begin
     with_workflow_vault() do vault, outdir
         experiments_root = joinpath(outdir, "experiments")
-        readme_path = new_experiment(
-            vault; slug="bulk", experiments_root=experiments_root
-        )
+        readme_path = new_experiment(vault; slug="bulk", experiments_root=experiments_root)
         writer = Module(:DummyWriter, false)
         Core.eval(writer, :(const DATA_SCHEMA_VERSION = 1))
         key = DataVault.keys(vault)[1]
@@ -170,7 +166,7 @@ end
         build_ledger(vault)
 
         build_experiment_report(
-            vault, writer; experiments_root=experiments_root, narrative_match_all=true,
+            vault, writer; experiments_root=experiments_root, narrative_match_all=true
         )
         after = read(readme_path, String)
         @test occursin("Run: [`", after)

@@ -623,7 +623,7 @@ function build_experiment_report(
     # Optional cross-link into EXP-NNN narrative READMEs.
     if experiments_root !== nothing
         _sync_experiment_narratives!(
-            vault, String(experiments_root), out_path; match_all=narrative_match_all,
+            vault, String(experiments_root), out_path; match_all=narrative_match_all
         )
     end
 
@@ -686,9 +686,7 @@ Render the markdown block that `build_experiment_report` injects into
 each matched EXP-NNN README's `## Generated provenance` section.
 Relative paths are computed so the link works from the EXP directory.
 """
-function _experiment_provenance_md(
-    vault::Vault, run_readme::AbstractString,
-)::String
+function _experiment_provenance_md(vault::Vault, run_readme::AbstractString)::String
     project = vault.spec.study.project_name
     # Links are emitted as absolute outdir paths; Documenter and plain
     # viewers resolve them consistently regardless of the EXP dir depth.

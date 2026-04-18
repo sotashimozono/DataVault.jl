@@ -92,11 +92,16 @@ function new_experiment(
     experiments_root::Union{Nothing,AbstractString}=nothing,
     id::Union{Nothing,AbstractString,Integer}=nothing,
 )::String
-    root = experiments_root === nothing ? _default_experiments_root(vault) : String(experiments_root)
+    root = if experiments_root === nothing
+        _default_experiments_root(vault)
+    else
+        String(experiments_root)
+    end
     isempty(slug) && error("new_experiment: slug must be non-empty")
     # Allow filesystem-safe slugs only (letters, digits, dash, underscore).
-    all(c -> isletter(c) || isdigit(c) || c in ('-', '_'), slug) ||
-        error("new_experiment: slug must be kebab-case / snake_case ([a-zA-Z0-9_-]); got $slug")
+    all(c -> isletter(c) || isdigit(c) || c in ('-', '_'), slug) || error(
+        "new_experiment: slug must be kebab-case / snake_case ([a-zA-Z0-9_-]); got $slug",
+    )
 
     mkpath(root)
     id_str = _resolve_id(root, id)
@@ -219,7 +224,7 @@ function _parse_front_matter_value(raw::AbstractString)
     end
     # Quoted scalar
     if (startswith(raw, '"') && endswith(raw, '"')) ||
-       (startswith(raw, '\'') && endswith(raw, '\''))
+        (startswith(raw, '\'') && endswith(raw, '\''))
         return String(raw[2:(end - 1)])
     end
     return String(raw)
@@ -246,9 +251,8 @@ function build_narrative_index(
     experiments_root::AbstractString;
     output::AbstractString=joinpath(experiments_root, "INDEX.md"),
 )::String
-    isdir(experiments_root) || error(
-        "build_narrative_index: experiments_root not found — $experiments_root"
-    )
+    isdir(experiments_root) ||
+        error("build_narrative_index: experiments_root not found — $experiments_root")
 
     rows = Vector{NamedTuple}()
     for entry in sort!(readdir(experiments_root))
@@ -267,8 +271,8 @@ function build_narrative_index(
         started = String(get(header, "started", ""))
         hyp = String(get(header, "hypothesis_ref", ""))
         runs_raw = get(header, "data_runs", String[])
-        runs = runs_raw isa AbstractVector ? [String(r) for r in runs_raw] :
-               [String(runs_raw)]
+        runs =
+            runs_raw isa AbstractVector ? [String(r) for r in runs_raw] : [String(runs_raw)]
         push!(rows, (; id, slug, status, started, hyp, runs, entry))
     end
     sort!(rows; by=r -> r.id)
@@ -285,8 +289,21 @@ function build_narrative_index(
         runs_cell = isempty(r.runs) ? "" : join(r.runs, ", ")
         println(
             io,
-            "| EXP-", r.id, " | [", r.slug, "](", r.entry, "/README.md) | ",
-            r.status, " | ", r.started, " | ", r.hyp, " | ", runs_cell, " |",
+            "| EXP-",
+            r.id,
+            " | [",
+            r.slug,
+            "](",
+            r.entry,
+            "/README.md) | ",
+            r.status,
+            " | ",
+            r.started,
+            " | ",
+            r.hyp,
+            " | ",
+            runs_cell,
+            " |",
         )
     end
     mkpath(dirname(output))
@@ -305,7 +322,7 @@ its heading and replaced in place; surrounding narrative is untouched.
 Noop if the file lacks a `## Generated provenance` heading.
 """
 function _inject_provenance_block!(
-    readme_path::AbstractString, provenance_md::AbstractString,
+    readme_path::AbstractString, provenance_md::AbstractString
 )
     isfile(readme_path) || return nothing
     text = read(readme_path, String)
@@ -352,10 +369,13 @@ function _update_data_runs!(readme_path::AbstractString, run_entry::AbstractStri
     return nothing
 end
 
-function _write_front_matter!(path::AbstractString, header::AbstractDict, body::AbstractString)
+function _write_front_matter!(
+    path::AbstractString, header::AbstractDict, body::AbstractString
+)
     # Emit keys in a stable order if they appear in the canonical list.
-    canonical_order = ["id", "slug", "status", "author", "started",
-                       "hypothesis_ref", "data_runs"]
+    canonical_order = [
+        "id", "slug", "status", "author", "started", "hypothesis_ref", "data_runs"
+    ]
     io = IOBuffer()
     println(io, "---")
     seen = Set{String}()
