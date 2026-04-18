@@ -557,6 +557,12 @@ kwargs are required in the common case.
 
 - `project_root` defaults to `pkgdir(writer)` (used for git introspection).
 - `data_schema_version` overrides any module constant.
+- `experiments_root` — when given, the run is cross-linked into any
+  `EXP-NNN-*/README.md` whose front-matter `data_runs` list contains
+  `vault.run` (or into every EXP when `narrative_match_all=true`).  The
+  target README gets its `## Generated provenance` section rewritten with
+  a link back to this run's auto-README, and the `data_runs` list is
+  updated.  Idempotent — safe to call repeatedly.
 
 The README is overwritten on every call (idempotent).  The schema.toml is
 **append-only**: unchanged writers are a no-op, but a changed
@@ -571,6 +577,8 @@ function build_experiment_report(
     project_root::Union{Nothing,AbstractString}=nothing,
     data_schema_version::Union{Nothing,Integer}=nothing,
     output_name::AbstractString="README.md",
+    experiments_root::Union{Nothing,AbstractString}=nothing,
+    narrative_match_all::Bool=false,
 )::String
     winfo = _introspect_writer(writer, data_schema_version)
 
@@ -611,7 +619,92 @@ function build_experiment_report(
     out_path = joinpath(_run_data_dir(vault), output_name)
     mkpath(dirname(out_path))
     write(out_path, md)
+
+    # Optional cross-link into EXP-NNN narrative READMEs.
+    if experiments_root !== nothing
+        _sync_experiment_narratives!(
+            vault, String(experiments_root), out_path; match_all=narrative_match_all,
+        )
+    end
+
     out_path
+end
+
+"""
+    _sync_experiment_narratives!(vault, experiments_root, run_readme; match_all=false)
+
+Walk every `EXP-NNN-*/README.md` under `experiments_root`.  For each
+match (see below), rewrite its `## Generated provenance` section to
+point at `run_readme` and append `vault.run` to the front-matter
+`data_runs` list.
+
+"Match" policy:
+
+- `match_all=false` (default): only READMEs whose front-matter
+  `data_runs` list already contains `vault.run` are updated.  This lets
+  authors opt in explicitly — they wrote `data_runs: [smoke]` in the
+  front-matter, and DataVault fills in the provenance link after the
+  run finishes.
+- `match_all=true`: every EXP is updated.  Useful for bulk initial
+  cross-linking after a refactor.
+
+Quiet — fails silently when `experiments_root` does not exist.
+"""
+function _sync_experiment_narratives!(
+    vault::Vault,
+    experiments_root::AbstractString,
+    run_readme::AbstractString;
+    match_all::Bool=false,
+)
+    isdir(experiments_root) || return nothing
+    run_name = String(vault.run)
+    # Provenance markdown is identical across matched READMEs.
+    provenance_md = _experiment_provenance_md(vault, run_readme)
+
+    for entry in readdir(experiments_root)
+        m = match(r"^EXP-\d+-", entry)
+        m === nothing && continue
+        exp_readme = joinpath(experiments_root, entry, "README.md")
+        isfile(exp_readme) || continue
+
+        header, _ = _parse_front_matter(read(exp_readme, String))
+        runs = get(header, "data_runs", String[])
+        runs_vec = runs isa AbstractVector ? [String(r) for r in runs] : String[]
+        should_update = match_all || (run_name in runs_vec)
+        should_update || continue
+
+        _inject_provenance_block!(exp_readme, provenance_md)
+        _update_data_runs!(exp_readme, run_name)
+    end
+    return nothing
+end
+
+"""
+    _experiment_provenance_md(vault::Vault, run_readme::AbstractString) -> String
+
+Render the markdown block that `build_experiment_report` injects into
+each matched EXP-NNN README's `## Generated provenance` section.
+Relative paths are computed so the link works from the EXP directory.
+"""
+function _experiment_provenance_md(
+    vault::Vault, run_readme::AbstractString,
+)::String
+    project = vault.spec.study.project_name
+    # Links are emitted as absolute outdir paths; Documenter and plain
+    # viewers resolve them consistently regardless of the EXP dir depth.
+    io = IOBuffer()
+    println(io, "- Run: [`", project, "/", vault.run, "/README.md`](", run_readme, ")")
+    index_path = joinpath(vault.outdir, "data", project, "INDEX.md")
+    println(io, "- Run index: [`", project, "/INDEX.md`](", index_path, ")")
+    schema_path = _schema_path(vault)
+    if isfile(schema_path)
+        println(io, "- Schema: [`schema.toml`](", schema_path, ")")
+    end
+    figs_toml = joinpath(_run_figure_dir(vault), "figures.toml")
+    if isfile(figs_toml)
+        println(io, "- Figure archive: [`figures.toml`](", figs_toml, ")")
+    end
+    String(take!(io))
 end
 
 # ── build_experiments_index ─────────────────────────────────────────────────
