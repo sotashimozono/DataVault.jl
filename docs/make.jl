@@ -27,7 +27,11 @@ makedocs(;
         assets=["assets/favicon.ico", "assets/custom.css"],
     ),
     modules=[DataVault],
-    pages=["Home" => "index.md"],
+    pages=[
+        "Home" => "index.md",
+        "Workflow" => "workflow.md",
+        "Conventions" => "conventions.md",
+    ],
 )
 
 deploydocs(; repo="github.com/sotashimozono/DataVault.jl.git", devbranch="main")
