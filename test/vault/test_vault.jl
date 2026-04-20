@@ -313,6 +313,111 @@ end
     end
 end
 
+# ── acquire_running! (atomic .running via POSIX link) ─────────────────────────
+
+@testset "acquire_running!: :ok on empty slot, :busy on fresh lock" begin
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        @test acquire_running!(vault, k) === :ok
+        @test is_running(vault, k)
+
+        # Second acquire on a fresh .running must not steal the lock.
+        @test acquire_running!(vault, k) === :busy
+    end
+end
+
+@testset "acquire_running!: :reclaimed when heartbeat is stale" begin
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        @test acquire_running!(vault, k) === :ok
+
+        # Backdate the heartbeat= line to simulate a crashed holder.
+        path = DataVault._running_file(vault, k)
+        old_str = Dates.format(Dates.now() - Dates.Second(7200), "yyyy-mm-ddTHH:MM:SS")
+        lines = readlines(path)
+        open(path, "w") do io
+            for line in lines
+                println(io, startswith(line, "heartbeat=") ? "heartbeat=$old_str" : line)
+            end
+        end
+        @test running_age_secs(vault, k) > 600
+
+        # stale_after=600: the old lock is stale, we should reclaim it.
+        @test acquire_running!(vault, k; stale_after=600.0) === :reclaimed
+        # And the new heartbeat is fresh.
+        @test running_age_secs(vault, k) < 5
+    end
+end
+
+@testset "acquire_running!: race is serialised by POSIX link()" begin
+    # Pure serialised check — two acquire_running! calls in sequence
+    # must see exactly one :ok and one :busy.  The `link()` atomicity
+    # is the invariant; Julia's task model is a coarse proxy but
+    # sufficient to catch a broken implementation.
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        r1 = acquire_running!(vault, k)
+        r2 = acquire_running!(vault, k)
+        @test Set([r1, r2]) == Set([:ok, :busy])
+    end
+end
+
+@testset "acquire_running!: concurrent @async on stale lock at most one :reclaimed" begin
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        # Seed a very stale .running.
+        acquire_running!(vault, k)
+        path = DataVault._running_file(vault, k)
+        old_str = Dates.format(Dates.now() - Dates.Second(7200), "yyyy-mm-ddTHH:MM:SS")
+        lines = readlines(path)
+        open(path, "w") do io
+            for line in lines
+                println(io, startswith(line, "heartbeat=") ? "heartbeat=$old_str" : line)
+            end
+        end
+
+        # Fire 8 concurrent reclaim attempts; at most one may win.
+        tasks = [@async acquire_running!(vault, k; stale_after=600.0) for _ in 1:8]
+        results = [fetch(t) for t in tasks]
+        n_ok = count(==(:ok), results)
+        n_reclaimed = count(==(:reclaimed), results)
+        n_busy = count(==(:busy), results)
+
+        @test (n_ok + n_reclaimed) == 1
+        @test n_busy == 7
+    end
+end
+
+@testset "refresh_running!: returns true while held, false after release" begin
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        @test acquire_running!(vault, k) === :ok
+
+        hb1 = running_heartbeat(vault, k)
+        sleep(1.1)
+        @test refresh_running!(vault, k) === true
+        hb2 = running_heartbeat(vault, k)
+        @test hb2 !== nothing
+        @test hb2 > hb1
+
+        clear_running!(vault, k)
+        # Lock was released; refresh_running! now sees no file.
+        @test refresh_running!(vault, k) === false
+    end
+end
+
+@testset "running_age_secs: Inf when no lock held" begin
+    with_vault() do vault, _
+        k = DataVault.keys(vault)[1]
+        @test running_age_secs(vault, k) == Inf
+
+        acquire_running!(vault, k)
+        @test running_age_secs(vault, k) < 5
+        clear_running!(vault, k)
+        @test running_age_secs(vault, k) == Inf
+    end
+end
+
 # ── Custom path_formatter ─────────────────────────────────────────────────────
 
 @testset "path_formatter: default uses ParamIO.format_path" begin
