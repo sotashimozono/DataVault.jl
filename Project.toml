@@ -1,6 +1,6 @@
 name = "DataVault"
 uuid = "23f5f8f6-b4da-40ee-8c72-c53b6c5de94f"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["sota shimozono <shimozono-sota631@g.ecc.u-tokyo.ac.jp>"]
 
 [deps]
@@ -13,7 +13,7 @@ SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [sources]
-ParamIO = {url = "https://github.com/sotashimozono/ParamIO.jl.git"}
+ParamIO = {rev = "main", url = "https://github.com/sotashimozono/ParamIO.jl.git"}
 
 [compat]
 Dates = "1.11.0"
