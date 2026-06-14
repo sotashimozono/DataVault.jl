@@ -14,7 +14,7 @@ In-place Van der Pol vector field:
 function vanderpol!(du::Vector{Float64}, u::Vector{Float64}, μ::Float64)
     x, y = u
     du[1] = y
-    du[2] = μ * (1.0 - x^2) * y - x
+    return du[2] = μ * (1.0 - x^2) * y - x
 end
 
 # ── RK4 integrator ────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ function rk4_solve(μ::Float64, u0::Vector{Float64}, t_end::Float64, dt::Float64
         ys[i + 1] = u[2]
     end
 
-    ts, xs, ys
+    return ts, xs, ys
 end
 
 # ── Observables ───────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ function extract_observables(
         NaN
     end
 
-    Dict{String,Any}(
+    return Dict{String,Any}(
         "amplitude" => amplitude,
         "period" => period,
         "energy" => energy,

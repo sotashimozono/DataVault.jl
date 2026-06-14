@@ -78,5 +78,5 @@ function Vault(
     # before we touch the data subtree.
     _save_log_toml(vault)
     _save_config_snapshot(vault)
-    vault
+    return vault
 end

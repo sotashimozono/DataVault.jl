@@ -216,7 +216,7 @@ end
         raw = TOML.parsefile(alt_config)
         raw["datavault"]["path_keys"] = ["model.g"]   # shrink the key list
         open(alt_config, "w") do io
-            TOML.print(io, raw)
+            return TOML.print(io, raw)
         end
 
         ex = try

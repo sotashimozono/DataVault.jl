@@ -29,7 +29,7 @@ function cleanup_stale(vault::Vault; stale_after::Real=600.0)::Int
             count += 1
         end
     end
-    count
+    return count
 end
 
 # Future heartbeats within this margin (seconds) are attributed to multi-host

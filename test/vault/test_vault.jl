@@ -51,7 +51,7 @@ end
         raw = TOML.parsefile(snapshot)
         raw["study"]["total_samples"] = 999
         open(snapshot, "w") do io
-            TOML.print(io, raw)
+            return TOML.print(io, raw)
         end
         # Re-constructing the Vault should warn, not error
         @test_logs (:warn, r"Config has changed") Vault(CONFIG; outdir=outdir)

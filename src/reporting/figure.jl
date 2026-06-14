@@ -30,9 +30,9 @@ function record_figure(
 
     meta_path = joinpath(figure_dir, "meta.toml")
     open(meta_path, "w") do io
-        TOML.print(io, meta)
+        return TOML.print(io, meta)
     end
-    meta_path
+    return meta_path
 end
 
 # ── figure archive (append-only version chain) ──────────────────────────────
@@ -49,11 +49,11 @@ end
 const _FIGURES_TOML_NAME = "figures.toml"
 
 function _figures_run_dir(vault::Vault)::String
-    _run_figure_dir(vault)
+    return _run_figure_dir(vault)
 end
 
 function _figures_toml_path(vault::Vault)::String
-    joinpath(_figures_run_dir(vault), _FIGURES_TOML_NAME)
+    return joinpath(_figures_run_dir(vault), _FIGURES_TOML_NAME)
 end
 
 function _sha1_of_file(path::AbstractString)::String
@@ -72,14 +72,14 @@ function _load_figures_toml(vault::Vault)::Dict{String,Any}
     end
     figs = get(raw, "figures", nothing)
     figs isa AbstractVector || (figs = Vector{Dict{String,Any}}())
-    Dict{String,Any}("figures" => Vector{Dict{String,Any}}(figs))
+    return Dict{String,Any}("figures" => Vector{Dict{String,Any}}(figs))
 end
 
 function _save_figures_toml(vault::Vault, data::Dict{String,Any})
     path = _figures_toml_path(vault)
     mkpath(dirname(path))
     _atomic_toml_write(path, data)
-    path
+    return path
 end
 
 function _archive_tag(vault::Vault, live_path::AbstractString)::String
@@ -89,7 +89,7 @@ function _archive_tag(vault::Vault, live_path::AbstractString)::String
     ns = string(time_ns() % 1000000; pad=6)
     gh = _git_hash(live_path)
     isempty(gh) && (gh = "unknown")
-    string(ts, "-", ns, "_", gh)
+    return string(ts, "-", ns, "_", gh)
 end
 
 function _find_existing_archive_by_hash(
@@ -106,7 +106,7 @@ function _find_existing_archive_by_hash(
             return ap
         end
     end
-    nothing
+    return nothing
 end
 
 function _find_or_create_entry!(
@@ -125,7 +125,7 @@ function _find_or_create_entry!(
         "versions" => Vector{Dict{String,Any}}(),
     )
     push!(list, entry)
-    entry
+    return entry
 end
 
 """
@@ -201,7 +201,7 @@ function archive_figure!(
     push!(versions, version_entry)
 
     _save_figures_toml(vault, data)
-    archive_abs
+    return archive_abs
 end
 
 """
@@ -243,7 +243,7 @@ function list_figure_history(
             )
         end
     end
-    out
+    return out
 end
 
 """
@@ -304,5 +304,5 @@ function restore_figure!(
         end
     end
     _save_figures_toml(vault, data)
-    live
+    return live
 end

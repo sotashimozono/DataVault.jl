@@ -52,7 +52,7 @@ function mark_done!(vault::Vault, key::DataKey; jobid=nothing, tag_value=nothing
 
     running = _running_file(vault, key)
     isfile(running) && rm(running; force=true)
-    nothing
+    return nothing
 end
 
 """
@@ -68,7 +68,7 @@ function mark_running!(vault::Vault, key::DataKey)
     mkpath(dirname(path))
     now_str = Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS")
     write(path, "pid=$(getpid())\nstarted=$(now_str)\nheartbeat=$(now_str)\n")
-    nothing
+    return nothing
 end
 
 """
@@ -109,9 +109,7 @@ most one caller sees `:ok` / `:reclaimed`; the rest see `:busy`.
 - [`clear_running!`](@ref) — release without marking done (failure paths).
 - [`cleanup_stale`](@ref) — background reaper for crashed masters.
 """
-function acquire_running!(
-    vault::Vault, key::DataKey; stale_after::Real=600.0
-)::Symbol
+function acquire_running!(vault::Vault, key::DataKey; stale_after::Real=600.0)::Symbol
     path = _running_file(vault, key)
     mkpath(dirname(path))
 
@@ -134,9 +132,7 @@ function acquire_running!(
     # Write fresh content to a unique tmp name, then `link()` it into
     # place.  `link()` fails atomically if the target already exists.
     now_str = Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS")
-    tmp_name = @sprintf(
-        "%s.acq.%d.%x", basename(path), getpid(), rand(UInt32)
-    )
+    tmp_name = @sprintf("%s.acq.%d.%x", basename(path), getpid(), rand(UInt32))
     tmp = joinpath(dirname(path), tmp_name)
     write(tmp, "pid=$(getpid())\nstarted=$(now_str)\nheartbeat=$(now_str)\n")
 
@@ -179,7 +175,7 @@ function touch_running!(vault::Vault, key::DataKey)
     catch
         # .running may have been removed by another master; swallow
     end
-    nothing
+    return nothing
 end
 
 """
@@ -231,7 +227,7 @@ function running_heartbeat(vault::Vault, key::DataKey)::Union{DateTime,Nothing}
         end
     catch
     end
-    nothing
+    return nothing
 end
 
 """
@@ -243,7 +239,7 @@ the file has already been removed (e.g. by [`mark_done!`](@ref)).
 function clear_running!(vault::Vault, key::DataKey)
     path = _running_file(vault, key)
     isfile(path) && rm(path; force=true)
-    nothing
+    return nothing
 end
 
 """

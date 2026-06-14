@@ -9,7 +9,7 @@ Raises an error if the file does not exist.
 function load(vault::Vault, key::DataKey; prefix::AbstractString="data")::Dict
     path = _data_file(vault, key; prefix=prefix)
     isfile(path) || error("Data file not found: $path")
-    JLD2.load(path)
+    return JLD2.load(path)
 end
 
 """
@@ -23,7 +23,7 @@ function save!(vault::Vault, key::DataKey, data::Dict; prefix::AbstractString="d
     path = _data_file(vault, key; prefix=prefix)
     mkpath(dirname(path))
     _atomic_jld2_write(path, data)
-    nothing
+    return nothing
 end
 
 """
@@ -38,7 +38,7 @@ function load_bin(vault::Vault, key::DataKey; prefix::AbstractString="checkpoint
         "Checkpoint not found: $path\n" *
         "(Checkpoints may exist only on HPC. Check your outdir or sync first.)",
     )
-    JLD2.load(path)
+    return JLD2.load(path)
 end
 
 """
@@ -52,5 +52,5 @@ function save_bin!(
     path = _bin_file(vault, key; prefix=prefix)
     mkpath(dirname(path))
     _atomic_jld2_write(path, data)
-    nothing
+    return nothing
 end

@@ -31,7 +31,7 @@ block delimited by `---` lines — [`build_narrative_index`](@ref) parses
 it back out.
 """
 function experiment_template()::String
-    read(_TEMPLATE_FILE, String)
+    return read(_TEMPLATE_FILE, String)
 end
 
 function _render_template(; id, slug, purpose, hypothesis, hypothesis_ref, author, today)
@@ -390,7 +390,7 @@ function _write_front_matter!(
     end
     println(io, "---")
     println(io)
-    write(path, string(String(take!(io)), body))
+    return write(path, string(String(take!(io)), body))
 end
 
 function _emit_front_matter_kv(io::IO, key::AbstractString, value)
