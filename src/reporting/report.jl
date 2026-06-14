@@ -242,9 +242,9 @@ function _writer_identity_matches(existing::AbstractDict, candidate::AbstractDic
     es = get(existing, "schema", Dict{String,Any}())
     cs = get(candidate, "schema", Dict{String,Any}())
     return get(ew, "package", nothing) == get(cw, "package", nothing) &&
-               get(ew, "package_version", nothing) == get(cw, "package_version", nothing) &&
-               get(es, "data_schema_version", nothing) ==
-               get(cs, "data_schema_version", nothing)
+           get(ew, "package_version", nothing) == get(cw, "package_version", nothing) &&
+           get(es, "data_schema_version", nothing) ==
+           get(cs, "data_schema_version", nothing)
 end
 
 # ── events_*.jsonl timing ───────────────────────────────────────────────────
