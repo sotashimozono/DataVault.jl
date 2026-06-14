@@ -291,7 +291,7 @@ function _datavault_git_hash()::String
     dir = pkgdir(DataVault)
     dir === nothing && return "unknown"
     try
-        return strip(read(`git -C $dir rev-parse --short HEAD`, String))
+        return strip(read(pipeline(`git -C $dir rev-parse --short HEAD`; stderr=devnull), String))
     catch
         return "unknown"
     end

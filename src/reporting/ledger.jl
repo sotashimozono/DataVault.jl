@@ -40,13 +40,26 @@ function build_ledger(vault::Vault)::String
     end
 
     open(ledger_path, "w") do io
-        println(io, join(all_cols, ","))
+        println(io, join((_csv_escape(c) for c in all_cols), ","))
         for row in rows
-            println(io, join([get(row, c, "") for c in all_cols], ","))
+            println(io, join((_csv_escape(get(row, c, "")) for c in all_cols), ","))
         end
     end
 
     ledger_path
+end
+
+# Quote a CSV cell if it contains a comma or a double-quote (inner quotes are
+# doubled, RFC4180-style). Newlines are flattened to spaces so the line-based
+# reader (`_read_ledger_csv`) stays correct; ledger cells (e.g. `tag_value`)
+# are single-line values in practice. Without this, a `tag_value` like
+# `"[1, 2]"` shifts every later column and the reader mis-associates values.
+function _csv_escape(s::AbstractString)::String
+    t = replace(String(s), '\n' => ' ', '\r' => ' ')
+    if occursin(',', t) || occursin('"', t)
+        return string('"', replace(t, '"' => "\"\""), '"')
+    end
+    return t
 end
 
 function _parse_done_file(path::String)::Dict{String,String}

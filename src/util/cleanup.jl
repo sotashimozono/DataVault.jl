@@ -32,18 +32,31 @@ function cleanup_stale(vault::Vault; stale_after::Real=600.0)::Int
     count
 end
 
+# Future heartbeats within this margin (seconds) are attributed to multi-host
+# NFS clock skew and treated as "fresh"; beyond it the timestamp is considered
+# corrupt and we fall back to the local mtime.
+const _HEARTBEAT_FUTURE_SKEW = 300.0
+
 # Read the `heartbeat=` timestamp from a .running file and return age in
-# seconds. Falls back to file mtime if the timestamp cannot be parsed.
+# seconds. Falls back to file mtime if the timestamp cannot be parsed, or if it
+# is implausibly future-dated (a negative age would otherwise make the lock
+# look perpetually fresh — i.e. a key that can never be reclaimed).
 function _running_age_secs(path::String, now_dt::DateTime)::Float64
     try
         for line in eachline(path)
             if startswith(line, "heartbeat=")
                 hb = Dates.DateTime(line[11:end], "yyyy-mm-ddTHH:MM:SS")
-                return Dates.value(now_dt - hb) / 1000.0  # ms → s
+                age = Dates.value(now_dt - hb) / 1000.0  # ms → s
+                if age >= 0.0
+                    return age
+                elseif age > -_HEARTBEAT_FUTURE_SKEW
+                    return 0.0          # small clock skew → treat as fresh
+                end
+                break                   # implausibly future-dated → mtime fallback
             end
         end
     catch
     end
-    # Fallback: file mtime
+    # Fallback: file mtime (parse failure or corrupt future heartbeat)
     return time() - mtime(path)
 end
