@@ -3,12 +3,15 @@
 """
     _atomic_jld2_write(path, data)
 
-Write `data` (a `Dict`) to `path` atomically by writing to a per-pid
-temporary file first and then `mv`ing it into place. Safe against
-concurrent writers on NFS.
+Write `data` (a `Dict`) to `path` atomically by writing to a per-task,
+per-pid temporary file first and then `mv`ing it into place. Safe against
+concurrent writers across processes (NFS) and across tasks within one process.
 """
 function _atomic_jld2_write(path::String, data::Dict)
-    tmp = path * ".tmp." * string(getpid())
+    # Per-task unique suffix: pid alone collides when two tasks in the SAME
+    # process write the same key (e.g. under Threads), letting one task `mv` a
+    # tmp file another is still writing. Mirrors `_atomic_toml_write`.
+    tmp = string(path, ".tmp.", getpid(), ".", objectid(current_task()), ".", time_ns())
     try
         jldopen(tmp, "w") do f
             for (k, v) in data

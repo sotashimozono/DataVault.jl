@@ -10,7 +10,7 @@ const CONFIG_REPORT = joinpath(FIXTURES_REPORT, "study.toml")
 function _dummy_writer(name::Symbol)
     m = Module(name, false)
     Core.eval(m, :(const DATA_SCHEMA_VERSION = 7))
-    m
+    return m
 end
 
 function with_report_vault(f)
@@ -178,7 +178,7 @@ end
     try
         cd(root) do
             run(pipeline(`git init --quiet`; stderr=devnull))
-            run(
+            return run(
                 pipeline(
                     `git -c user.email=t@t -c user.name=t commit --allow-empty -m seed --quiet`;
                     stderr=devnull,
@@ -189,7 +189,7 @@ end
         mkpath(submod)
         cd(submod) do
             run(pipeline(`git init --quiet`; stderr=devnull))
-            run(
+            return run(
                 pipeline(
                     `git -c user.email=t@t -c user.name=t commit --allow-empty -m seed --quiet`;
                     stderr=devnull,
@@ -240,7 +240,7 @@ end
                 io,
                 """{"kind":"key_done","ts":"2026-04-18T10:00:05","key":"a","secs":5.0}""",
             )
-            println(
+            return println(
                 io,
                 """{"kind":"key_done","ts":"2026-04-18T10:00:10","key":"b","secs":2.0}""",
             )

@@ -14,5 +14,5 @@ function keys(vault::Vault; status::Symbol=:all)::Vector{DataKey}
     status == :all && return all
     status == :done && return filter(k -> is_done(vault, k), all)
     status == :pending && return filter(k -> !is_done(vault, k), all)
-    error("Unknown status :$status — use :all, :done, or :pending")
+    return error("Unknown status :$status — use :all, :done, or :pending")
 end

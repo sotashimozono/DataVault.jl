@@ -186,32 +186,29 @@ function _resolve_config_for_attach(info::LogTomlV1, outdir::AbstractString)::St
             snapshot_abs config = info.config
         return info.config
     end
-    error(
+    return error(
         "Cannot attach: neither config_snapshot.toml ($snapshot_abs) nor " *
         "recorded config ($(info.config)) is available.",
     )
 end
 
 """
-Minimal CSV reader for DataVault's ledger.csv output. Assumes:
-  - comma-separated values
-  - no quoted fields
-  - no embedded commas or newlines in cell values
-
-These assumptions hold for ledger.csv because DataVault writes it via a
-direct `join(..., ",")` without quoting. If a future DataVault version
-changes the ledger format, this reader must be updated alongside.
+Minimal CSV reader for DataVault's ledger.csv output. Handles RFC4180-style
+quoted fields (a field wrapped in `"..."` may contain commas; an inner `"` is
+written `""`), matching what `build_ledger`/`_csv_escape` emit. Embedded
+newlines are not supported (the writer flattens them to spaces), so parsing
+stays line-based.
 """
 function _read_ledger_csv(path::AbstractString)::Vector{Dict{String,String}}
     isfile(path) || return Dict{String,String}[]
     filesize(path) == 0 && return Dict{String,String}[]
     lines = readlines(path)
     isempty(lines) && return Dict{String,String}[]
-    header = String.(split(lines[1], ','))
+    header = _split_csv_line(lines[1])
     rows = Vector{Dict{String,String}}()
     for raw in @view lines[2:end]
         isempty(raw) && continue
-        values = String.(split(raw, ','))
+        values = _split_csv_line(raw)
         row = Dict{String,String}()
         for (i, col) in enumerate(header)
             row[col] = i ≤ length(values) ? values[i] : ""
@@ -219,4 +216,39 @@ function _read_ledger_csv(path::AbstractString)::Vector{Dict{String,String}}
         push!(rows, row)
     end
     return rows
+end
+
+# Split one CSV line into fields, honoring RFC4180 quoting: a field may be
+# wrapped in double-quotes to contain commas, and an inner `"` is written `""`.
+function _split_csv_line(line::AbstractString)::Vector{String}
+    fields = String[]
+    buf = IOBuffer()
+    inquotes = false
+    chars = collect(line)
+    n = length(chars)
+    k = 1
+    while k ≤ n
+        c = chars[k]
+        if inquotes
+            if c == '"'
+                if k < n && chars[k + 1] == '"'
+                    print(buf, '"')
+                    k += 1
+                else
+                    inquotes = false
+                end
+            else
+                print(buf, c)
+            end
+        elseif c == '"'
+            inquotes = true
+        elseif c == ','
+            push!(fields, String(take!(buf)))
+        else
+            print(buf, c)
+        end
+        k += 1
+    end
+    push!(fields, String(take!(buf)))
+    return fields
 end

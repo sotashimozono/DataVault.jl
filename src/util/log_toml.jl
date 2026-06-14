@@ -75,7 +75,7 @@ function read_log_toml(path::AbstractString)
         "This file was written by a newer DataVault. " *
         "Please upgrade DataVault to read it.",
     )
-    reader(parsed, path)
+    return reader(parsed, path)
 end
 
 # ── v1 reader ────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ function _read_log_toml_v1(parsed::Dict, path::AbstractString)::LogTomlV1
     pathb = _need(parsed, "path", "")
     prov = _need(parsed, "provenance", "")
 
-    LogTomlV1(
+    return LogTomlV1(
         _need(meta, "log_toml_version", "meta"),
         _need(meta, "datavault_version", "meta"),
         get(meta, "datavault_git_hash", "unknown"),
@@ -147,7 +147,7 @@ function find_log_tomls(outdir::AbstractString)::Vector{String}
         end
     end
     sort!(paths)
-    paths
+    return paths
 end
 
 # ── writer ───────────────────────────────────────────────────────────────────
@@ -250,13 +250,13 @@ function _save_log_toml(vault::Vault)::String
     )
 
     _atomic_toml_write(log_path, payload)
-    log_path
+    return log_path
 end
 
 function _ensure_datavault_readme(dv_dir::AbstractString)
     mkpath(dv_dir)
     readme = joinpath(dv_dir, "README.md")
-    isfile(readme) || write(readme, _DATAVAULT_README)
+    return isfile(readme) || write(readme, _DATAVAULT_README)
 end
 
 function _atomic_toml_write(path::AbstractString, data::Dict)
@@ -266,7 +266,7 @@ function _atomic_toml_write(path::AbstractString, data::Dict)
     tmp = string(path, ".tmp.", getpid(), ".", objectid(current_task()), ".", time_ns())
     try
         open(tmp, "w") do io
-            TOML.print(io, data)
+            return TOML.print(io, data)
         end
         mv(tmp, path; force=true)
     catch e
@@ -291,7 +291,9 @@ function _datavault_git_hash()::String
     dir = pkgdir(DataVault)
     dir === nothing && return "unknown"
     try
-        return strip(read(`git -C $dir rev-parse --short HEAD`, String))
+        return strip(
+            read(pipeline(`git -C $dir rev-parse --short HEAD`; stderr=devnull), String)
+        )
     catch
         return "unknown"
     end
