@@ -70,7 +70,7 @@ end
         parsed = TOML.parsefile(log_path)
         parsed["study"]["config"] = "/absolutely/nonexistent/study.toml"
         open(log_path, "w") do io
-            TOML.print(io, parsed)
+            return TOML.print(io, parsed)
         end
 
         v = attach(log_path)

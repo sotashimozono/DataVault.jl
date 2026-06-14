@@ -51,7 +51,7 @@ function _introspect_writer(
         0
     end
 
-    _WriterInfo(name, version, root, dsv)
+    return _WriterInfo(name, version, root, dsv)
 end
 
 # ── code versions (git hashes) ──────────────────────────────────────────────
@@ -77,7 +77,7 @@ function gather_code_versions(project_root::AbstractString)::Dict{String,String}
             result[entry] = _safe_git_hash(full)
         end
     end
-    result
+    return result
 end
 
 function _safe_git_hash(dir::AbstractString)::String
@@ -125,7 +125,7 @@ function _introspect_schema_keys(vault::Vault)
     end
     sort!(top);
     sort!(bench)
-    (top, bench)
+    return (top, bench)
 end
 
 function _first_sample_jld2(vault::Vault)::Union{Nothing,String}
@@ -138,7 +138,7 @@ function _first_sample_jld2(vault::Vault)::Union{Nothing,String}
             return joinpath(root, f)
         end
     end
-    nothing
+    return nothing
 end
 
 # ── schema.toml writer (first-write-only) ───────────────────────────────────
@@ -146,7 +146,7 @@ end
 const _SCHEMA_FILENAME = "schema.toml"
 
 function _schema_path(vault::Vault)::String
-    joinpath(_run_data_dir(vault), _SCHEMA_FILENAME)
+    return joinpath(_run_data_dir(vault), _SCHEMA_FILENAME)
 end
 
 function _build_schema_payload(
@@ -164,7 +164,7 @@ function _build_schema_payload(
             submod[k] = v
         end
     end
-    Dict{String,Any}(
+    return Dict{String,Any}(
         "writer" => Dict{String,Any}(
             "package" => writer.name,
             "package_version" => writer.version,
@@ -233,7 +233,7 @@ function _write_schema_toml(
     end
     @warn "writer identity changed since initial schema — appending new record" current=alt
     _atomic_toml_write(alt, payload)
-    alt
+    return alt
 end
 
 function _writer_identity_matches(existing::AbstractDict, candidate::AbstractDict)::Bool
@@ -241,9 +241,10 @@ function _writer_identity_matches(existing::AbstractDict, candidate::AbstractDic
     cw = get(candidate, "writer", Dict{String,Any}())
     es = get(existing, "schema", Dict{String,Any}())
     cs = get(candidate, "schema", Dict{String,Any}())
-    get(ew, "package", nothing) == get(cw, "package", nothing) &&
-        get(ew, "package_version", nothing) == get(cw, "package_version", nothing) &&
-        get(es, "data_schema_version", nothing) == get(cs, "data_schema_version", nothing)
+    return get(ew, "package", nothing) == get(cw, "package", nothing) &&
+               get(ew, "package_version", nothing) == get(cw, "package_version", nothing) &&
+               get(es, "data_schema_version", nothing) ==
+               get(cs, "data_schema_version", nothing)
 end
 
 # ── events_*.jsonl timing ───────────────────────────────────────────────────
@@ -304,7 +305,7 @@ function _parse_events_jsonl(outdir::AbstractString)::Union{Nothing,_TimingSumma
 
     sorted_pairs = sort!(collect(per_key); by=p -> -p.second)
     longest = [(p.first, p.second) for p in sorted_pairs[1:min(5, end)]]
-    _TimingSummary(length(files), key_done, first_start, last_done, seconds, longest)
+    return _TimingSummary(length(files), key_done, first_start, last_done, seconds, longest)
 end
 
 # ── config / progress / figures helpers ─────────────────────────────────────
@@ -341,7 +342,7 @@ function _format_config_summary(snapshot_path::AbstractString)::String
             end
         end
     end
-    String(take!(io))
+    return String(take!(io))
 end
 
 struct _LedgerProgress
@@ -374,7 +375,7 @@ function _ledger_progress(
         counts[combo] = get(counts, combo, 0) + 1
     end
     breakdown = sort!(collect(counts); by=p -> -p.second)
-    _LedgerProgress(length(data_lines), String.(header), breakdown)
+    return _LedgerProgress(length(data_lines), String.(header), breakdown)
 end
 
 function _expected_total(spec)::Int
@@ -401,13 +402,13 @@ function _collect_figures(
             push!(out, relpath(joinpath(root, f), _run_data_dir_abs(outdir, project, run)))
         end
     end
-    sort!(out)
+    return sort!(out)
 end
 
 function _run_data_dir_abs(
     outdir::AbstractString, project::AbstractString, run::AbstractString
 )::String
-    joinpath(outdir, "data", project, run)
+    return joinpath(outdir, "data", project, run)
 end
 
 # ── README.md renderer ──────────────────────────────────────────────────────
@@ -535,7 +536,7 @@ function _render_report(
     println(io, "- record: [`", basename(schema_path), "`](./", basename(schema_path), ")")
     println(io)
 
-    String(take!(io))
+    return String(take!(io))
 end
 
 # ── public API: build_experiment_report ─────────────────────────────────────
@@ -627,7 +628,7 @@ function build_experiment_report(
         )
     end
 
-    out_path
+    return out_path
 end
 
 """
@@ -702,7 +703,7 @@ function _experiment_provenance_md(vault::Vault, run_readme::AbstractString)::St
     if isfile(figs_toml)
         println(io, "- Figure archive: [`figures.toml`](", figs_toml, ")")
     end
-    String(take!(io))
+    return String(take!(io))
 end
 
 # ── build_experiments_index ─────────────────────────────────────────────────
@@ -782,7 +783,7 @@ function build_experiments_index(
         )
     end
     write(index_path, String(take!(io)))
-    index_path
+    return index_path
 end
 
 # ── schema reader + compat check ────────────────────────────────────────────
@@ -819,7 +820,7 @@ function read_schema_record(vault::Vault)
     for (k, v) in get(w, "submodule_git_hashes", Dict())
         submod[String(k)] = String(v)
     end
-    (;
+    return (;
         package=String(get(w, "package", "")),
         package_version=String(get(w, "package_version", "")),
         package_root=String(get(w, "package_root", "")),
@@ -910,7 +911,9 @@ function check_schema_compat(
         )
     end
 
-    (; ok=true, status=:match, missing_fields=String[], extra_fields=extra, notes="ok")
+    return (;
+        ok=true, status=:match, missing_fields=String[], extra_fields=extra, notes="ok"
+    )
 end
 
 """

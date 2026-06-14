@@ -46,7 +46,7 @@ function build_ledger(vault::Vault)::String
         end
     end
 
-    ledger_path
+    return ledger_path
 end
 
 # Quote a CSV cell if it contains a comma or a double-quote (inner quotes are
@@ -70,5 +70,5 @@ function _parse_done_file(path::String)::Dict{String,String}
         idx === nothing && continue
         result[line[1:(idx - 1)]] = line[(idx + 1):end]
     end
-    result
+    return result
 end

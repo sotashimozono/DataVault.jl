@@ -186,7 +186,7 @@ function _resolve_config_for_attach(info::LogTomlV1, outdir::AbstractString)::St
             snapshot_abs config = info.config
         return info.config
     end
-    error(
+    return error(
         "Cannot attach: neither config_snapshot.toml ($snapshot_abs) nor " *
         "recorded config ($(info.config)) is available.",
     )

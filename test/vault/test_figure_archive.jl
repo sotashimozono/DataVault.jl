@@ -15,7 +15,7 @@ end
 
 function _make_pdf(path::AbstractString, content::AbstractString)
     mkpath(dirname(path))
-    write(path, content)
+    return write(path, content)
 end
 
 # ── archive_figure! ─────────────────────────────────────────────────────────
