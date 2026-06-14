@@ -15,15 +15,24 @@ test_concurrency_safety.jl — concurrency / robustness fixes
 """
 
 @testset "save!: concurrent writers to one key don't corrupt" begin
+    # This race only manifests with >= 2 OS threads — single-threaded, the
+    # spawned tasks never interleave between `jldopen` and `mv`. Run with
+    # `julia -t auto` / JULIA_NUM_THREADS to actually exercise it (CI sets it).
+    Threads.nthreads() < 2 &&
+        @warn "concurrent-save! test is only meaningful with >=2 threads (got $(Threads.nthreads()))"
     outdir = mktempdir()
     try
         vault = Vault(CONFIG; outdir=outdir)
         key = DataVault.keys(vault)[1]
-        @sync for _ in 1:50
-            Threads.@spawn DataVault.save!(vault, key, Dict{String,Any}("x" => 1))
+        # Each writer stores DISTINCT data, so the final file must be exactly
+        # one writer's complete payload — not a torn/unreadable file, and not a
+        # merge of two writers' keys.
+        @sync for i in 1:50
+            Threads.@spawn DataVault.save!(vault, key, Dict{String,Any}("w" => i))
         end
-        d = DataVault.load(vault, key)        # must load cleanly (not truncated)
-        @test d["x"] == 1
+        d = DataVault.load(vault, key)           # must load cleanly (not truncated)
+        @test haskey(d, "w") && length(d) == 1   # exactly one writer's keys (no merge)
+        @test 1 <= d["w"] <= 50                  # and a valid writer's value
     finally
         rm(outdir; recursive=true, force=true)
     end
