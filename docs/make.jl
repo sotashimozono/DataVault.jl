@@ -33,5 +33,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/sotashimozono/DataVault.jl.git", devbranch="main", push_preview=true
+    repo="github.com/QAtlasHub/DataVault.jl.git", devbranch="main", push_preview=true
 )
