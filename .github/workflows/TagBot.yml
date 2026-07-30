@@ -1,3 +1,3 @@
 name: TagBot
 on: { issue_comment: { types: [created] }, workflow_dispatch: { inputs: { lookback: { default: "3" } } } }
-jobs: { tagbot: { uses: QAtlasHub/.github/.github/workflows/tagbot.yml@v1, secrets: inherit } }
+jobs: { tagbot: { uses: QAtlasHub/.github/.github/workflows/tagbot.yml@main, secrets: inherit } }
