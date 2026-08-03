@@ -1,4 +1,30 @@
 name: CI
 on: { push: { branches: [main] }, pull_request: {} }
+
+# Calls TestShards.jl directly, retiring this repository's use of the org's julia-ci.yml — which
+# is a third hand-written copy of the same sharded-test vertical (a plan job, a coverage merge, a
+# timing recorder) and is being deleted once its three callers have moved.
+#
+# Nothing is planned up front: each shard decides what it owns from the same timing history. The
+# reusable merges the shards' coverage into one report, merges their records into one ordered
+# document, checks that every unit ran exactly once, and refreshes `ci-timings` on pushes to main.
 jobs:
-  ci: { uses: QAtlasHub/.github/.github/workflows/julia-ci.yml@main, with: { shards: 1 }, secrets: inherit }
+  test:
+    permissions:
+      contents: write   # the timing history is pushed to the `ci-timings` orphan branch
+    uses: QAtlasHub/TestShards.jl/.github/workflows/sharded-tests.yml@main
+    with:
+      # Seven units. The diagnosis printed on every run names the knee for this suite; set what
+      # it says rather than what looks tidy.
+      shards: 4
+    # Named rather than inherited: handing an entire secret store to another repository's
+    # workflow for one optional token is the wrong shape.
+    #
+    # This is also a test of where the boundary is. Measured on lab-sotashimozono/ITensorAD.jl#20,
+    # a secret did NOT survive the call into this same reusable — but that caller is in a
+    # DIFFERENT organisation. This one is not. If `collect` warns that no token arrived, the
+    # boundary is per-repository and this repo needs the caller-side upload job too
+    # (QAtlasHub/TestShards.jl/actions/upload-coverage); if it uploads, the boundary is the
+    # organisation. See QAtlasHub/TestShards.jl#48.
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
