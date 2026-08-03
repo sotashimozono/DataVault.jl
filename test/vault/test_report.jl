@@ -214,7 +214,7 @@ end
     try
         v1 = Vault(CONFIG_REPORT; outdir=outdir, run="r1")
         v2 = Vault(CONFIG_REPORT; outdir=outdir, run="r2")
-        build_ledger(v1);
+        build_ledger(v1)
         build_ledger(v2)
 
         idx = build_experiments_index(outdir, "test_study")

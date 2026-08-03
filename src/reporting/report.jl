@@ -123,7 +123,7 @@ function _introspect_schema_keys(vault::Vault)
     catch e
         @warn "schema introspection failed" file=jld_path exception=e
     end
-    sort!(top);
+    sort!(top)
     sort!(bench)
     return (top, bench)
 end
